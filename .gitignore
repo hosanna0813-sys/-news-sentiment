@@ -1,0 +1,4 @@
+.claude/settings.local.json
+news_sentiment_desktop_v4/.venv/
+__pycache__/
+*.pyc
