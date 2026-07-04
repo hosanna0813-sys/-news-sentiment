@@ -49,25 +49,34 @@ def _parse_retained_from_text(text: str):
     return None
 
 
+def _col(row: sqlite3.Row, key: str, default=None):
+    """防禦性取欄位：使用者的正式資料庫可能是舊版 schema（缺部分欄位）"""
+    try:
+        value = row[key]
+    except (IndexError, KeyError):
+        return default
+    return default if value is None else value
+
+
 def _news_row_to_item(row: sqlite3.Row) -> dict:
     """轉成測試項目：模型輸入欄位 = 正式流程 judge_batch 送給模型的相同欄位"""
     return {
         "row_id": row["row_id"],
-        "title": row["title"] or "",
-        "summary": row["summary"] or "",
-        "source": row["source"] or "",
-        "published_at": row["published_at"] or "",
-        "channel": row["channel"] or "",
-        "is_duplicate": bool(row["duplicate_group_id"]),
+        "title": _col(row, "title", ""),
+        "summary": _col(row, "summary", ""),
+        "source": _col(row, "source", ""),
+        "published_at": _col(row, "published_at", ""),
+        "channel": _col(row, "channel", ""),
+        "is_duplicate": bool(_col(row, "duplicate_group_id")),
         "ground_truth": {
-            "retained": bool(row["retained"]),
-            "retention_status": row["retention_status"] or "",
+            "retained": bool(_col(row, "retained", 1)),
+            "retention_status": _col(row, "retention_status", ""),
         },
         "ai_original": {
-            "priority_stars": row["priority_stars"] or 0,
-            "should_respond": bool(row["should_respond"]),
-            "is_moi_core_business": bool(row["is_moi_core_business"]),
-            "score_final": row["score_final"] or 0,
+            "priority_stars": _col(row, "priority_stars", 0),
+            "should_respond": bool(_col(row, "should_respond", 0)),
+            "is_moi_core_business": bool(_col(row, "is_moi_core_business", 0)),
+            "score_final": _col(row, "score_final", 0),
         },
     }
 
@@ -101,11 +110,16 @@ def collect_correction_items(conn: sqlite3.Connection) -> list:
 def collect_control_items(conn: sqlite3.Connection, exclude_ids: set,
                            per_class: int, rng: random.Random) -> list:
     """對照樣本：AI 判過、無人工修正的新聞，依留用/不留用分層各抽 per_class 則"""
+    news_columns = {r[1] for r in conn.execute("PRAGMA table_info(news)")}
+    # 舊版 schema 可能沒有 retention_judged_at：退而以狀態非「待確認」代表已判過
+    judged_cond = ("retention_judged_at IS NOT NULL AND retention_status != '待確認'"
+                    if "retention_judged_at" in news_columns
+                    else "retention_status != '待確認'")
     out = []
     for retained_value in (1, 0):
         rows = conn.execute(
-            "SELECT * FROM news WHERE retention_judged_at IS NOT NULL "
-            "AND retention_status != '待確認' AND retained=?", (retained_value,)).fetchall()
+            f"SELECT * FROM news WHERE {judged_cond} AND retained=?",
+            (retained_value,)).fetchall()
         rows = [r for r in rows if r["row_id"] not in exclude_ids]
         if len(rows) > per_class:
             rows = rng.sample(rows, per_class)
