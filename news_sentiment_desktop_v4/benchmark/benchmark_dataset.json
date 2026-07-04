@@ -1,0 +1,3800 @@
+{
+  "meta": {
+    "generated_at": "2026-07-05 00:26:15",
+    "db_path": "C:\\Users\\larry\\AppData\\Roaming\\NewsSentimentDesktopV4\\news_sentiment.db",
+    "seed": 42,
+    "control_per_class": 60,
+    "control_filter": "狀態非待確認且非空",
+    "counts": {
+      "correction_total": 60,
+      "correction_ai_too_strict": 42,
+      "correction_ai_too_lenient": 18,
+      "control_retained": 60,
+      "control_not_retained": 60,
+      "total": 180
+    },
+    "note": "ground_truth=人工覆核後的最終留用狀態；control 樣本為 AI 判斷後未被人工修改者（視為默認接受）"
+  },
+  "items": [
+    {
+      "row_id": "row_01526b79e506",
+      "title": "「活死人」騎機車現身花蓮街頭 警揭他人生消失的14年",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 33.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_070ab91f7725",
+      "title": "台南火車站迎百年變革告別舊圓環 站前廣場改造今動工",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 23.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_0af3cc35448d",
+      "title": "6.4萬顆中國山寨戰鬥陀螺走私遭攔　警憂心：高速旋轉「恐碎裂傷人」",
+      "summary": "",
+      "source": "FTNN新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_0f61e617287c",
+      "title": "黃牛門票大盤商！ 強妮昔嗆粉絲：沒拿槍逼你買",
+      "summary": "",
+      "source": "東森新聞",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_10b0cc3bc2ef",
+      "title": "刑事局偵破黃牛集團　逮3黃牛起獲各演唱會門票53張",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 53.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_10e807b80e28",
+      "title": "新興毒品走私升溫 國安局反毒訓練納無人機操控技術",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 26.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_1389dee35924",
+      "title": "失聯移工逃跑拉倒2警！嘴巴膝蓋都傷　法官判無罪警憂：開惡例",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 86.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_1abccd54a658",
+      "title": "台南火車站站前翻新啟動 中央補助近3億元改善交通動線",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "產經",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 24.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_26d6951f78a7",
+      "title": "從店面到餐車！馬爾地夫夫妻靠異國美食翻身　移民署助圓創業夢",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 37.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_3193ec513ce9",
+      "title": "花蓮驚見「活死人」！失聯14年被聲請死亡宣告...幽靈通緝犯曝光",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 47.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_35da2857b38e",
+      "title": "踢踹幼童呼巴掌！基隆私立幼兒園勒令停招1年 2教保員終身禁任",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 60.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_3c2f67677d5e",
+      "title": "中國6.4萬顆劣質戰鬥陀螺走私來台　流入市面恐成兒童殺手",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 43.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_3e00001cf82c",
+      "title": "扯！騎士遇攔查竟是「死人」 逃亡14年遭宣告死亡…警傻眼",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 26.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_3e2603dfdfec",
+      "title": "白沙屯媽祖進香狂吸人車潮 苗縣府爭取5千萬今動土翻蓋白沙派出所",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 33.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_423f834599ee",
+      "title": "新北林口鐵皮工廠大火！火勢延燒連毀3間廠房　現場烈焰沖天畫面曝光",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_47366d7f571f",
+      "title": "縣長官邸淪砲房？駐警瞞楊文科帶已婚小三「入內歡唱嘿咻」　遭檢舉記過調職",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 67.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_4967feab7d00",
+      "title": "新屋強制裝光電板，最終誰買單？業界：配套缺席、廢棄物無處去，恐釀全民公害！",
+      "summary": "",
+      "source": "中天新聞網",
+      "published_at": "2026-07-03",
+      "channel": "消費訊息",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 45.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_4a4d022e7b70",
+      "title": "獨家／前鋒國宅蓋44年成立管委會　控里長金流不透明、拒交接",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 45.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_4de309c1484e",
+      "title": "台南火車站前改善工程動土　預定116年底完工",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 14.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_4eaba7036d5a",
+      "title": "發電小金庫！新建案屋頂強制裝光電　餵飽半導體綠電剛需",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "財經",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 11.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_4f69126dacdf",
+      "title": "中國6.4萬顆仿冒戰鬥陀螺險流市面 警：高速旋轉恐碎裂噴飛",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 27.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_50d83cdd0c36",
+      "title": "法院認證「無罪」！　失聯移工推警落跑致警傷",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 84.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_56cd8b87f1df",
+      "title": "快新聞／台灣人出國小心！中共惡法上路　張博洋警告：去這幾國恐遭「引渡」",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 33.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_5a980f2e9a36",
+      "title": "快新聞／納稅人注意！「這4項地方稅」減收方案震撼登場　申請條件全曝光",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 61.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_5bee8e43b584",
+      "title": "遭爆兒子砸店、打警察　桃綠營參選人認了",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 52.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_5c0f250fa955",
+      "title": "「依托咪酯」先驅原料主要從大陸走私 國安局採「5大管道」查緝",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 42.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_5d0ec8fc3f74",
+      "title": "提供宜蘭大南澳公地放領專案貸款 協助農民圓夢",
+      "summary": "",
+      "source": "NewTalk新頭殼",
+      "published_at": "2026-07-03",
+      "channel": "財經",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 36.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_6018f526052e",
+      "title": "從臉書版主到成立黃牛產業鏈 台灣頭號黃牛「強妮」行徑高調",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 26.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_611c87388ad1",
+      "title": "新建案強制裝光電！餵飽半導體綠電剛需",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 24.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_6e746dd6c76a",
+      "title": "台南火車站前交通改善工程動土　總經費3.45億元、明年底完工",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 8.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_701fbb7e4243",
+      "title": "獨／成立管委會等44年　控里長金流不透明",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 39.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_71dcc448a19a",
+      "title": "翁曉玲狂砍媒宣費！13部會遭殃　提案全曝光「理由複製貼上」",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 47.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_79010f6a8bd4",
+      "title": "替代役男惡性不改！回役報到秒失聯逃兵　新北地院判刑4月罰12萬",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 35.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_7c3d653c8f65",
+      "title": "自由開講》校園第五級保全 不能取代教育防線",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "投書",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 24.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_7eb1fb9d1fda",
+      "title": "市價破1000萬！保三攔截「6.4萬顆山寨戰鬥陀螺」從中國走私　劣質品恐傷童",
+      "summary": "",
+      "source": "FTNN新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 27.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_86bebeaae093",
+      "title": "新港籍漁船小馬海灘擱淺 海巡主動發現即時救援",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "訊息平台",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 34.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_8b76c42bfa0c",
+      "title": "退休警遭仇家鳴槍尋釁！怒開槍還擊爆頭奪命　賠800萬獲輕判",
+      "summary": "",
+      "source": "知新聞",
+      "published_at": "2026-07-03",
+      "channel": "知新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 53.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_8c14b22d8b59",
+      "title": "全台最大黃牛「強妮」聲押！BTS高雄首排搖滾區賣9.6萬　曾上Joeman專訪炫搶票手法",
+      "summary": "",
+      "source": "知新聞",
+      "published_at": "2026-07-03",
+      "channel": "知新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_9235161dd322",
+      "title": "接軌歐美日綠能浪潮 太陽光電產業永續發展協會力挺屋頂光電新制",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "產經",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 6.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_93121515daff",
+      "title": "無人機條例付委審查！不只藍、白、政院版　林楚茵版也入列",
+      "summary": "",
+      "source": "NOWnews",
+      "published_at": "2026-07-03",
+      "channel": "要聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 63.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_a9bda07a6135",
+      "title": "播不雅歌、放未授權曲！警廣約僱人員遭記過不續聘 提告吞敗",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 34.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_a9cc5f231107",
+      "title": "全台最大黃牛集團「強妮娛樂」被抄！ 負責人遭檢方聲押",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 36.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_b4d2cbba3b05",
+      "title": "扛白沙屯媽祖勤務！苗栗白沙派出所老舊 斥資4900萬新建",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 46.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_b6f13795d3a0",
+      "title": "前鋒國宅消防設施全壞　住戶：活在恐懼中",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 83.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_c7f7c7d895d9",
+      "title": "台江國家公園遭外來種埃及聖入侵 鄒族獵人協助射殺移除",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 39.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_ca988ee2bfc4",
+      "title": "鹽水溪紅樹林再現埃及聖䴉 鄒族獵人登船圍剿",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 14.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_d5a18c7fd2b6",
+      "title": "房市還在冷？營造業景氣連2升　背後撐盤力量曝光",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "地產",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_d6f37e34e509",
+      "title": "逃十年！警政署頭號黃牛「強妮」落網 聲押禁見",
+      "summary": "",
+      "source": "東森新聞",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 50.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_d888185c1b55",
+      "title": "影／新北林口鐵皮工廠火警 3間廠房700坪燒毀",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_dc47b69c2b9e",
+      "title": "嘉義大車站推小澎湖公辦都更 195名地主意願調查拚過半同意",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 49.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_dd06fa2eeead",
+      "title": "「全台最大黃牛」強妮落網！轉型主辦屢爆爭議　私下AI搶票轉手牟利千萬",
+      "summary": "",
+      "source": "壹蘋新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 20.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_e0717cbf7304",
+      "title": "國安局：中國為依托咪酯酸先驅原料主要走私來源",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 42.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_e4567a817b4b",
+      "title": "嘉義大車站計畫啟動 「小澎湖」公辦都更意願調查啟動",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 60.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_e834a22a2dc1",
+      "title": "北市增設老公寓再加碼！最高領480萬、「取消法停」免繳百萬代金",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "地產",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 24.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_ed8379ddae82",
+      "title": "疑不滿中橫管制1年多 男子闖砂卡礑噴紅漆毀公設遭送辦",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 37.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_eff29737254a",
+      "title": "逃逸移工脫逃害警掛彩判無罪！法官一句「他沒有主動攻擊」掀網炸鍋：司法又翻車？",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 92.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_f28f92233b9b",
+      "title": "國宅消防設施全壞！每棟遭張貼「不合格場所」　住戶：活在恐懼中",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 72.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_f5961a184ae2",
+      "title": "配合台南車站地下化通車啟用 臨時後站人行道封閉改建",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 12.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_f8fd800f742e",
+      "title": "全台最大黃牛「強妮」聲押！　/雇工程師ＡＩ搶票牟利上千萬",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 39.0
+      },
+      "group": "correction",
+      "direction": "ai_too_strict"
+    },
+    {
+      "row_id": "row_fe12d6cb2c7e",
+      "title": "快新聞／基隆幼兒園爆兒虐！2教保員重罰40萬、終身不得任教　園方停招1年",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "人工不留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 65.0
+      },
+      "group": "correction",
+      "direction": "ai_too_lenient"
+    },
+    {
+      "row_id": "row_8a9e62aa706c",
+      "title": "移工偷進社宅打工「電梯井墜垃圾區」亡　遺體遭拖行成懸案",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 72.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_24f2016d1f8e",
+      "title": "保三攔截「6.4萬顆陸製山寨戰鬥陀螺」　警提醒：仿冒品易碎裂射傷人",
+      "summary": "",
+      "source": "CTWant",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 46.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_0a3418954b96",
+      "title": "AI搶票再轉售「5年不法獲利300萬」！全台最大黃牛「強妮娛樂」負責人遭聲押",
+      "summary": "",
+      "source": "NewTalk新頭殼",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 47.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_29827e7490f8",
+      "title": "內政部：金門縣總預算案　協商期滿前達成共識",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 66.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_1a73adf4298b",
+      "title": "6.4萬顆中國山寨戰鬥陀螺走私遭攔　警憂心：高速旋轉「恐碎裂傷人」",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 49.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_e60f75d9cc53",
+      "title": "拘役50日剛回役！替代男報到秒失聯下場曝",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 50.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_022400a96830",
+      "title": "退休警槍殺仇家！為土方利益土地公廟前行兇...賣房賠償獲輕判",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 50.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_cc980895a51f",
+      "title": "新興毒品走私情資曝光　國安局：依托咪酯占新興毒品12％　將強化跨國緝毒與源頭打擊",
+      "summary": "",
+      "source": "CTWant",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 74.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_aa30e9070391",
+      "title": "太魯閣公廁、隧道遭噴紅漆　男子涉案送辦",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 49.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_9be92b841148",
+      "title": "內政部要求陸配候選人具結沒中國戶籍　游盈隆：提早因應制度調整",
+      "summary": "",
+      "source": "NewTalk新頭殼",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 87.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_17e9afe264c0",
+      "title": "超惡劣！太魯閣國家公園廁所亂噴漆還寫「X」　無業男落網",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 42.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_540c9f98237a",
+      "title": "中壢槍響！員警派出所中彈搶救 張善政臉書祈福集氣",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 106.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a710372483cf",
+      "title": "國安局：中國為依托咪酯先驅原料走私來源",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 70.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_4e60d1bb0fe4",
+      "title": "三重「台版KK園區」曝光！黑幫集團囚9緬甸女 逼接客最高11次",
+      "summary": "",
+      "source": "東森新聞",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 91.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_6435458e0510",
+      "title": "全台最大黃牛強妮「盜百人身分證掃票」一張加3萬　落網喊：我沒犯法",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 67.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_832337ed21ab",
+      "title": "預售屋賣壓升溫仍不降價　預售、中古屋價差創七年新高　台中飆破八成居冠",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 53.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_9f4b48faa86b",
+      "title": "連轟21槍！南庄槍擊案70小時偵破 鍾東錦發50萬獎金慰勞警員",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "苗栗縣",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 77.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_0a44d999c867",
+      "title": "移工墜社宅工地電梯井慘死屍體遭詭異拖行　真相未破成羅生門懸案",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 80.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_34c090689247",
+      "title": "靠AI狂掃GD、SJ演唱會門票　台灣最大黃牛集團「牛王」落網",
+      "summary": "",
+      "source": "東森新聞",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 51.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_71c665a941a1",
+      "title": "影/9緬甸女被囚「台版KK園區」逼接客　移民署逮18人",
+      "summary": "",
+      "source": "中天新聞網",
+      "published_at": "2026-07-03",
+      "channel": "中天新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 81.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_cf7ab0747210",
+      "title": "通緝犯逃亡14年2年前宣告死亡　竟在花蓮死而復生",
+      "summary": "",
+      "source": "壹蘋新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 55.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_989c2655ece3",
+      "title": "求救畫面曝！9緬甸女來台被囚「皮肉集中營」　下體發炎遭逼接客",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 85.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_6cbd766b11de",
+      "title": "內政部2.9億改善台南車站人車交織　劉世芳：古都嶄新門戶116年底完工",
+      "summary": "",
+      "source": "匯流新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治匯流",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 59.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_059a352ada05",
+      "title": "中颱巴威強度持續增強　北市消防籲民眾加強防颱整備",
+      "summary": "",
+      "source": "CTWant",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 52.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_4607ad48ce8f",
+      "title": "桃園30歲警「剛恢復配槍」派出所內頭部中彈　命危送長庚醫院搶救中",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 95.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_49403fead9f7",
+      "title": "台中巨蛋社宅工地移工墜井亡！遺體遭拖行　判決揭死亡羅生門",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 64.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c6ee48ce820b",
+      "title": "台版KK園區！緬甸女遭拐騙來台逼接客到下體發炎 移民署逮18人",
+      "summary": "",
+      "source": "東森新聞",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 105.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_e6693b4e3d0d",
+      "title": "5年考績甲等！中壢興國所員警頭部中彈 目前持續搶救中",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 81.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_3c4263e84201",
+      "title": "林口3工廠遭惡火吞噬！夜空燒成一片橘紅　百名警消急灌救",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 53.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_cd0687af74ed",
+      "title": "陳金德：大南澳公地放領專案貸款　最高貸8成",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 60.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_87debc801d0d",
+      "title": "汶汶案曝跟騷法致命漏洞！立院6日排審4大變革增訂「預防性羈押」",
+      "summary": "",
+      "source": "中天新聞網",
+      "published_at": "2026-07-03",
+      "channel": "中天新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 94.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_d2c7e4dda19a",
+      "title": "派出所驚傳槍響　桃園30歲男警頭部中彈",
+      "summary": "",
+      "source": "太報",
+      "published_at": "2026-07-03",
+      "channel": "新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 111.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_73e4c127762a",
+      "title": "花蓮警路檢攔到「死人」！通緝犯失聯14年被宣告死亡　謊報資料抓包當場「死而復生」",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 58.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c2589e978cef",
+      "title": "「日接11客」染重病 緬甸女死裡逃生揭台人蛇暴行",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 70.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_fc42f2ea1be4",
+      "title": "中颱巴威來勢洶洶！挑戰強颱等級 北市消急籲：提前備戰",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 84.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_43f1aa404782",
+      "title": "亂噴紅漆「X」！太魯閣國家公園淪塗鴉牆　無業男囂張行徑遭警逮捕",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 52.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_f79788cccc3a",
+      "title": "喪屍煙彈氾濫！　國安局：中國為依托咪酯酸先驅原料主要走私來源",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 53.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c56a6946bd8c",
+      "title": "移工墜工地電梯井慘死屍體遭詭異拖行",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 79.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_63d83abdeae6",
+      "title": "審計部：行動自然人頻證乏人問津 使用僅佔總次數1.16%",
+      "summary": "",
+      "source": "NewTalk新頭殼",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 69.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_4406685682b6",
+      "title": "疑不滿中橫震後持續交管 男公廁噴漆「x，都一年多了」被逮",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 61.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c3f07f9f3fbb",
+      "title": "竹聯幫惡煞誘騙9緬甸女來台淪性奴　每天接客11次慘無人道被救出",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 94.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_1d7d5522fedc",
+      "title": "國安局：中國為依托咪酯酸先驅原料主要走私來源",
+      "summary": "",
+      "source": "中央廣播電台",
+      "published_at": "2026-07-03",
+      "channel": "新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 76.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_0232d3f205b8",
+      "title": "國土署住宅貸款利息補貼新標準 9月開放受理共6,000戶受惠",
+      "summary": "",
+      "source": "NewTalk新頭殼",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 79.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_55215de969fd",
+      "title": "住宅貸款利息補貼放寬 9月受理、增6千戶受惠",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "產經",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 85.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a1750c93ce80",
+      "title": "五分埔都更案被審議 24 年才過關　政府應檢討國家都更政策",
+      "summary": "",
+      "source": "三立新聞網",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 43.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_ec77ad00c9a7",
+      "title": "林口鐵皮工廠大火！現場烈焰沖天畫面曝光",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 64.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_07beddb4ca79",
+      "title": "新／桃園派出所傳槍響　員警頭部中彈送醫",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 108.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a47285752d9b",
+      "title": "觀點／快篩成逮捕捷徑：當程序正義消失，下一個受害的可能是你",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 76.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_61def4d70d57",
+      "title": "國安局示警！依托咪酯3大毒品肆虐台灣　下週一赴立院報告5大防制策略",
+      "summary": "",
+      "source": "上報",
+      "published_at": "2026-07-03",
+      "channel": "焦點",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 84.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_2e23a3a7e5d2",
+      "title": "最新／中壢某派出所傳槍響　員警中彈倒臥血泊...持續搶救中",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 114.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_da1944c93995",
+      "title": "9緬甸女被騙來台淪性奴 被逼每天接客11次",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 5,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 93.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_80d536b73da8",
+      "title": "台版KK園區？人蛇集團高薪　騙9緬甸女來台「逼賣淫」",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 82.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_6dbd16b0b6c0",
+      "title": "防治新興毒品走私　國安局曝：依托咪酯先驅原料來自大陸",
+      "summary": "",
+      "source": "中天新聞網",
+      "published_at": "2026-07-03",
+      "channel": "中天新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 57.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a7d97afeba2b",
+      "title": "逃逸移工被捕掙脫害警濺血！法官判決無罪理由曝光：關鍵在「這1點」",
+      "summary": "",
+      "source": "風傳媒",
+      "published_at": "2026-07-03",
+      "channel": "風生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 83.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_b9f9e14b917a",
+      "title": "國家公園淪塗鴉牆！無業男噴紅漆「X」",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 42.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_7f4fb58bd7ff",
+      "title": "桃園中壢30歲男警派出所自戕　送醫搶救中",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 58.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c7bd948350ea",
+      "title": "保三查獲「6.4萬顆陸製戰鬥陀螺」市價破千萬　山寨品恐爆裂傷人",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 55.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_7562ae846f91",
+      "title": "金門縣115年度總預算案 內政部：協商後府會達成共識",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "要聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 46.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_57cb8941816d",
+      "title": "9緬甸女遭軟禁賣淫！發炎還被逼接客　遭榨乾月薪不到2萬",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 4,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 75.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_624d89d5cabd",
+      "title": "強颱巴威發展中！這天最靠近台灣　北市消防局急喊：提前做準備",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": true,
+        "retention_status": "留用"
+      },
+      "ai_original": {
+        "priority_stars": 3,
+        "should_respond": true,
+        "is_moi_core_business": false,
+        "score_final": 58.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_83a80e25c3ff",
+      "title": "高雄醉男拒檢「關燈夜遁」狂飆！落網裝病...5違規最高噴16.5萬",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 22.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_0911b07bb2fc",
+      "title": "男子衝撞竹縣警車　遭判刑7月",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 25.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_70983ab14f97",
+      "title": "竹市青春專案起跑！首推創意著色接力 畫出犯罪防護網",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 25.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_16b9acc1b703",
+      "title": "快訊／林口連鎖賣場傳砍人！男手臂濺血 警逮犯嫌釐清中",
+      "summary": "",
+      "source": "東森新聞",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 32.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_5ef951916cc7",
+      "title": "最大漁電共生業者「誠新綠能」爆掏空 南檢聲押6人獲准",
+      "summary": "",
+      "source": "太報",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 26.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_ee7c713a2671",
+      "title": "捍衛台灣公民生命人權圖像+紀律榮光！評析台灣警犬紀錄片《八歲K9》",
+      "summary": "",
+      "source": "NewTalk新頭殼",
+      "published_at": "2026-07-03",
+      "channel": "新頭殼newtalk",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 32.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a50a2f5d5ee5",
+      "title": "快訊》台64觀音山隧道連環撞！ 1駕駛雙腳夾困待救",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 21.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_b852f0eb0097",
+      "title": "嘉義大車站計畫小澎湖公辦都更啟動意願調查 拚9月底衝破5成門檻",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 38.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_65ef248dbc52",
+      "title": "台南市特搜隊辦TECC訓練　強化災害現場緊急醫療量能",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 17.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_f5b0a49ac26f",
+      "title": "台中男頂樓放飛「燒仙草」燒毀隔壁鄰居家 判4年刑",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 15.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_e393dd88f089",
+      "title": "前警政署長陳家欽慰問病逝警官遺眷 緬懷曾表揚「緝毒楷模」",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 11.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_983ea05f63d2",
+      "title": "三重深夜巨響「住戶以為爆炸」...小客車撞整排攤販！駕駛跑了",
+      "summary": "",
+      "source": "壹蘋新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 25.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_80fac37637c0",
+      "title": "酒駕男拒檢一路亂竄最高罰16.5萬 落網辯不適仍送辦",
+      "summary": "",
+      "source": "CNA",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 32.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_8ca83c1a3ab6",
+      "title": "翁曉玲狂砍媒宣費「一稿13用」！案由複製貼上　吳思瑤：贏了蔣萬安",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_60c152162d89",
+      "title": "詹江村爆料她兒子砸店、打警察　李柏瑟認了：18歲就斷絕關係",
+      "summary": "",
+      "source": "太報",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 26.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_712e15887216",
+      "title": "最後一堂課！沈伯洋10年免費刑法課謝幕　強調：知識不該被獨佔",
+      "summary": "",
+      "source": "FTNN新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 5.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_80d809d7055b",
+      "title": "台南火車站前3.5億改造啟動！圓環變U型動線 恐衝擊1.5年交通",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 23.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_22c24e3101c3",
+      "title": "還以為南萬華是邊陲區嗎？龍山寺新案站120萬元　萬大線卡位戰開打",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "地產",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c72a1a31a29d",
+      "title": "4大核心推動產業升級 卓揆：中小微升級條例9月送立院審查",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 9.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_d2ce85b68a5d",
+      "title": "高雄酒駕狂飆跑給警察追 遭查獲後說身體不適送醫",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 21.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_858ce53bd712",
+      "title": "快訊》國1三重段「隔音牆雜草」起火！ 消防兵分兩路趕往滅火",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 17.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_8f75bf564f0c",
+      "title": "虐童零容忍！基隆幼兒園虐童調查結果出爐　市府：2教保員終生不聘、停招1年",
+      "summary": "",
+      "source": "匯流新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治匯流",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 25.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_e44ff5ff63c9",
+      "title": "強制猥褻3歲孫女！色外公喊「尿布疹」...未通過測謊下場曝",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 17.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_30f7dc164eba",
+      "title": "桃園機車竊案！偷車賊「代步趴趴走」 警20分鐘圍捕到案",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 19.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_49546eaea7a9",
+      "title": "中二生當路霸、亂推女生下水　惡屁孩被捕10次！父母堅稱：我兒子很乖的",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 20.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_d5d02d70c8e9",
+      "title": "「刑事戰將」林明佐涉貪4451萬案 原定臥床出庭臨時喊卡",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "臺中市",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 36.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_e4d2587f2432",
+      "title": "快新聞／翁曉玲狂刪13部會媒宣費！吳思瑤怒轟「翁亂砍」：預算恐怖份子",
+      "summary": "",
+      "source": "民視新聞網",
+      "published_at": "2026-07-03",
+      "channel": "即時",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 47.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_1584bfbf7046",
+      "title": "北富銀小富翁帳戶32.7萬 資產規模年增8.7％",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "財經",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_72452ada28b4",
+      "title": "急診室乞討不成毆傷護理師 女子辯稱身心障礙遭法官打臉",
+      "summary": "",
+      "source": "Chinatimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 19.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_5d6715ba839c",
+      "title": "中職／龍迷注意！味全龍下半季實施安檢　天母球場入場規定一次看",
+      "summary": "",
+      "source": "NOWnews",
+      "published_at": "2026-07-03",
+      "channel": "運動",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_9920eaeed309",
+      "title": "綠議員參選人兒子遭爆「砸店、毆警」　發長文坦言：已斷絕關係",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 17.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_9a94c8923390",
+      "title": "影／高雄某網紅披薩店老闆掌摑女兒被目擊 網怒更Google店名...他道歉",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 11.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_117968a31ac3",
+      "title": "白曉燕命案遭重提抹黑　白冰冰出面提告",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 20.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_818fbe4db001",
+      "title": "蔣萬安駁「砍樹蓋遮陽傘」質疑　強調移樹因道路拓寬、與遮陽設施無關",
+      "summary": "",
+      "source": "CTWant",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 20.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_1098cba427f3",
+      "title": "預售待售餘屋13.7萬創新高 台中高雄得花6年才能賣完",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "地產",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_ec7c8cc82025",
+      "title": "台東78歲農夫遭農用搬運車壓車底　警消救出命危",
+      "summary": "",
+      "source": "壹蘋新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 23.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_586d3ee3344a",
+      "title": "戴資穎攜手UNIQLO進校園！勉勵學童克服挫折　曝不打球最想當警察",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_d90c776679dc",
+      "title": "新港籍漁船小馬海灘擱淺　海巡發現即時救援3名船員",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 24.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_602b7730bb48",
+      "title": "南投首次放天燈！紀念桃芝風災　「離國道200m」消防嚴陣以待",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-02",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 34.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_1397e96eee8c",
+      "title": "兩岸關係很緊張！鄭麗文：飛彈來才說要和平太晚了",
+      "summary": "",
+      "source": "NOWnews",
+      "published_at": "2026-07-03",
+      "channel": "要聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 35.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a934ae53e6cd",
+      "title": "獨居長輩居家安全！太保市公所全包了　600顆住警器免費送",
+      "summary": "",
+      "source": "ETtoday新聞雲",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 28.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_7f36e60edc81",
+      "title": "你摸我女兒胸部！男大生「解胸罩CPR」救活國中妹　恐龍爸怒告性騷索賠16萬…結局大快人心",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 12.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_773f0a83720c",
+      "title": "衝動吃官司！國道行車糾紛竟「揮槍」 苗栗露營商被判拘役40天",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 19.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_c0cfb0d2e77b",
+      "title": "士林驚傳刺人案 疑金錢糾紛...前妻抄剪刀刺前夫胸口",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 16.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_03990b2bbb76",
+      "title": "玩線上遊戲慘被騙！他匯數萬元想買稀有裝備　對方一句「查帳中」秒失聯",
+      "summary": "",
+      "source": "CTWant",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 13.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_a84b07003a46",
+      "title": "玩網遊遭設局！　假裝同好誘「匯數萬買稀有裝」後稱查帳秒蒸發",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 14.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_147d00c615dd",
+      "title": "蔣萬安證實！遮陽傘、機器狗是同公司：這沒有問題",
+      "summary": "",
+      "source": "NOWnews",
+      "published_at": "2026-07-03",
+      "channel": "要聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 11.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_71c0d30e147c",
+      "title": "兒遭爆砸店、打警察！綠桃園市議員參選人：已斷絕母子關係",
+      "summary": "",
+      "source": "中天新聞網",
+      "published_at": "2026-07-03",
+      "channel": "中天新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 26.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_b58c7113169d",
+      "title": "發動恐沒命！幼貓卡引擎室狂喵求救 警民祭這招誘脫困",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_21c2e994efe0",
+      "title": "大安警辦常訓迎防空演習 義警大隊攜手民間挽袖捐血",
+      "summary": "",
+      "source": "Libertytimes",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 32.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_03579cad0852",
+      "title": "【即時短評】從中國尊遭撞擊看中共輿情治理：還能遮多久？",
+      "summary": "",
+      "source": "UDN",
+      "published_at": "2026-07-03",
+      "channel": "要聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 11.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_dacc15cdef65",
+      "title": "影音／偷「小綿羊」見警油門催到底跑不掉！遭警車輕鬆追上狼狽落網",
+      "summary": "",
+      "source": "TVBS新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_b68f36e75bd4",
+      "title": "中市熱水器補助名額全數申請完畢 消防局呼籲保持環境通風",
+      "summary": "",
+      "source": "NOWnews",
+      "published_at": "2026-07-03",
+      "channel": "地方",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 17.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_e02d47070421",
+      "title": "暑假開始就出事！基隆19歲少女怒拿菜刀砍頸　弟弟濺血奪門求救",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 21.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_5ebcc784f4e9",
+      "title": "鄰居不合竟到頂樓「燒仙草」！火球隨風飄進隔壁屋　台中男遭判4年",
+      "summary": "",
+      "source": "FTNN新聞網",
+      "published_at": "2026-07-03",
+      "channel": "社會",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 18.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_4f1d8d9f684f",
+      "title": "Tesla獲6月台灣新車進口銷售冠軍！推全台充電優惠　激省40%費用",
+      "summary": "",
+      "source": "NOWnews",
+      "published_at": "2026-07-03",
+      "channel": "生活",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_55f02dfbae2a",
+      "title": "翁曉玲狂砍13部會媒宣費！提案全曝光",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_bd98dde5f765",
+      "title": "卓榮泰：中小微傳產振興計畫9月送立院　8年加碼千億助產業轉型",
+      "summary": "",
+      "source": "CTWant",
+      "published_at": "2026-07-03",
+      "channel": "政治",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 2,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 30.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_087aa340c968",
+      "title": "天后名醫翻車！光澤醫美8分店爆「偵煙器裝針孔」　創辦人王朝輝潛逃遭通緝",
+      "summary": "",
+      "source": "鏡週刊網",
+      "published_at": "2026-07-03",
+      "channel": "時事",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 1,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 20.0
+      },
+      "group": "control",
+      "direction": ""
+    },
+    {
+      "row_id": "row_6784022a1c8c",
+      "title": "築夢化墨香 阮芳誼以筆為橋書寫台越文化情誼",
+      "summary": "",
+      "source": "中央廣播電台",
+      "published_at": "2026-07-03",
+      "channel": "新聞",
+      "is_duplicate": false,
+      "ground_truth": {
+        "retained": false,
+        "retention_status": "AI建議不留用"
+      },
+      "ai_original": {
+        "priority_stars": 0,
+        "should_respond": false,
+        "is_moi_core_business": false,
+        "score_final": 0.0
+      },
+      "group": "control",
+      "direction": ""
+    }
+  ]
+}
