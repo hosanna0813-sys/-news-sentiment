@@ -114,6 +114,10 @@ class TopicAdjustmentPage(QWidget):
         self.preview_info = QLabel("")
         self.preview_info.setWordWrap(True)
         right_layout.addWidget(self.preview_info)
+        self.btn_open_url = QPushButton("開啟原始新聞網址")
+        self.btn_open_url.setEnabled(False)
+        self.btn_open_url.clicked.connect(self._on_open_news_url)
+        right_layout.addWidget(self.btn_open_url)
         # V4.2.1：正文改為可編輯——抓取失敗/正文不足的新聞可人工貼上或補完正文，
         # 儲存後狀態設為成功，即可進入分群/綜整流程
         self.preview_text = QTextEdit()
@@ -229,6 +233,18 @@ class TopicAdjustmentPage(QWidget):
             f"【{it.title}】（狀態：{it.body_fetch_status or '未抓取'}）\n"
             f"分群理由：{it.clustering_reason or '（無）'}")
         self.preview_text.setPlainText(it.body_text or "")
+        self.btn_open_url.setEnabled(bool(it.url))
+
+    def _on_open_news_url(self):
+        """開啟目前選取新聞的原始網址（與留用頁相同行為）"""
+        row_id = getattr(self, "_preview_row_id", None)
+        if not row_id:
+            return
+        it = self.ctx.news_repo.get(row_id)
+        if it and it.url:
+            from PySide6.QtGui import QDesktopServices
+            from PySide6.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl(it.url))
 
     def _on_save_body_edit(self):
         """人工編輯/補完正文：儲存後狀態設為成功（可進分群/綜整），記 feedback log"""
