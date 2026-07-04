@@ -1,42 +1,45 @@
-# 新聞輿情系統 Desktop V4.0（Claude 版）— Python 套件需求
-# 建議 Python 版本：3.10 ~ 3.12（PySide6 對應版本請自行核對）
+# News Sentiment Desktop V4 (Claude Edition) - Python requirements
+# Recommended Python: 3.10 - 3.12
+# NOTE: keep this file ASCII-only. pip decodes it with the Windows locale
+# codepage (cp950 on Traditional Chinese systems) and non-ASCII comments
+# break `pip install -r`.
 
 # ---- GUI ----
 PySide6>=6.6,<7.0
 
-# ---- Anthropic 官方 SDK ----
+# ---- Anthropic official SDK ----
 anthropic>=0.40.0
 
-# ---- 資料匯入 ----
+# ---- Data import ----
 openpyxl>=3.1.2
 
-# ---- 正文抓取 ----
+# ---- Article scraping ----
 requests>=2.31.0
 beautifulsoup4>=4.12.3
 lxml>=5.1.0
-# 讓 SSL 驗證改用作業系統憑證庫（解決公司代理/防火牆 TLS 檢查造成的 SSL 憑證錯誤）
+# Use the OS certificate store for SSL (fixes corporate proxy/firewall TLS issues)
 truststore>=0.8.0
 
-# ---- 正文抓取：瀏覽器渲染備援（V4.1.0，可選功能但預設安裝套件）----
-# 注意：安裝套件後，仍需另外執行一次「playwright install chromium」下載瀏覽器
-# （run_desktop.bat 首次啟動會自動執行；手動安裝見 README）
+# ---- Article scraping: browser rendering fallback (optional feature) ----
+# After install, also run once: playwright install chromium
+# (run_desktop.bat does this automatically on first launch)
 playwright>=1.44.0
 gne>=0.3.0
 
-# ---- Word 匯出 ----
+# ---- Word export ----
 python-docx>=1.1.0
 
-# ---- API Key 安全儲存（Windows Credential Manager / DPAPI） ----
+# ---- Secure API key storage (Windows Credential Manager / DPAPI) ----
 keyring>=24.3.0
 
-# ---- Gmail 新聞來源匯入（OAuth，唯讀 scope） ----
+# ---- Gmail news import (OAuth, read-only scope) ----
 google-api-python-client>=2.100.0
 google-auth-oauthlib>=1.2.0
 google-auth-httplib2>=0.2.0
 
-# ---- 打包為 exe（規格要求可未來支援） ----
+# ---- Packaging to exe (future) ----
 pyinstaller>=6.3.0
 
-# ---- 測試 ----
+# ---- Tests ----
 pytest>=8.0.0
 pytest-mock>=3.12.0
