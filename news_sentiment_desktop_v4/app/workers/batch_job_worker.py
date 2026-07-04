@@ -24,6 +24,11 @@ process_batch_fn；job_repo/batch_repo 的狀態寫入與 progress/batch_failed 
 的發送仍固定在本 QThread（呼叫端執行緒）依完成順序處理，只有 process_batch_fn
 本身真正平行執行——因此 process_batch_fn 內部若要寫 DB，須自行建立
 thread-local 連線（不可使用呼叫端在其他執行緒建立的 repo 物件）。
+
+cleanup_fn（V4.2.1）：工作結束（完成/取消/例外）時的收尾函式，於 run() 的
+finally 在「本 worker 執行緒上」執行。Playwright sync API 物件綁定建立它的
+執行緒，收尾不可改接 finished_job signal——signal slot 會排到主執行緒、
+且屆時 worker 執行緒已結束，跨執行緒關閉會造成 driver 管線 EPIPE 崩潰。
 """
 from __future__ import annotations
 
@@ -62,7 +67,8 @@ class BatchJobWorker(QThread):
                  process_batch_fn: Callable[[List[Any]], BatchOutcome],
                  job_repo: JobRepository, batch_repo: BatchRepository,
                  resume_job_id: Optional[str] = None, job_label_fn: Optional[Callable[[Any], str]] = None,
-                 max_retry_per_batch: int = 2, max_concurrency: int = 1, parent=None):
+                 max_retry_per_batch: int = 2, max_concurrency: int = 1,
+                 cleanup_fn: Optional[Callable[[], None]] = None, parent=None):
         super().__init__(parent)
         self.job_type = job_type
         self.item_batches = item_batches
@@ -73,6 +79,7 @@ class BatchJobWorker(QThread):
         self.job_label_fn = job_label_fn or (lambda it: getattr(it, "row_id", str(it)))
         self.max_retry_per_batch = max_retry_per_batch
         self.max_concurrency = max(1, max_concurrency)
+        self.cleanup_fn = cleanup_fn
         self._cancel = False
         self.job_id: str = resume_job_id or ""
 
@@ -82,6 +89,18 @@ class BatchJobWorker(QThread):
             self.job_repo.request_cancel(self.job_id)
 
     def run(self) -> None:
+        try:
+            self._run_impl()
+        finally:
+            # 收尾固定在本 worker 執行緒上執行（Playwright 等資源綁定執行緒），
+            # 涵蓋完成/取消/未預期例外全部路徑
+            if self.cleanup_fn is not None:
+                try:
+                    self.cleanup_fn()
+                except Exception as e:
+                    logger.warning(f"工作收尾（cleanup_fn）失敗: {e}")
+
+    def _run_impl(self) -> None:
         total_items = sum(len(b) for b in self.item_batches)
 
         if self.resume_job_id:

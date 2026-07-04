@@ -22,6 +22,11 @@ V4.1.1 修正：
 """
 from __future__ import annotations
 
+import os
+import signal
+import subprocess
+import sys
+import threading
 import time
 from typing import Optional, Dict, List
 from urllib.parse import urlparse
@@ -87,6 +92,11 @@ class PlaywrightScraper:
         self._context = None
         self._page = None
         self._extractor = None
+        # V4.2.1：記錄建立執行緒與 driver 程序 PID。Playwright sync API 物件綁定
+        # 建立執行緒，跨執行緒優雅關閉可能失敗；失敗時以 taskkill /T（Windows）
+        # 強制終止 driver 程序樹，避免殘留的 Node driver 對斷開管線寫入造成 EPIPE 崩潰。
+        self._owner_thread_id: Optional[int] = None
+        self._driver_pid: Optional[int] = None
 
     # 驅動死亡特徵（Node 端 EPIPE / 管線斷開）：偵測到即重啟整個 Playwright
     _DRIVER_DEATH_HINTS = ("epipe", "broken pipe", "connection closed",
@@ -133,6 +143,8 @@ class PlaywrightScraper:
             launch_args.append("--blink-settings=imagesEnabled=false")
 
         self._pw = sync_playwright().start()
+        self._owner_thread_id = threading.get_ident()
+        self._driver_pid = self._detect_driver_pid()
         try:
             self._browser = self._pw.chromium.launch(headless=True, args=launch_args)
         except Exception as e:
@@ -152,7 +164,11 @@ class PlaywrightScraper:
                      + ("（已以啟動參數停用圖片載入）" if self.block_images else ""))
 
     def close(self) -> None:
-        """逐層關閉：page → context → browser → driver，每層獨立防護"""
+        """逐層關閉：page → context → browser → driver，每層獨立防護。
+        跨執行緒關閉且優雅關閉失敗時，改以 taskkill /T 終止 driver 程序樹（V4.2.1）。"""
+        cross_thread = (self._owner_thread_id is not None
+                        and threading.get_ident() != self._owner_thread_id)
+        graceful_failed = False
         for name, closer in (
             ("page", lambda: self._page and self._page.close()),
             ("context", lambda: self._context and self._context.close()),
@@ -161,21 +177,58 @@ class PlaywrightScraper:
             try:
                 closer()
             except Exception as e:
+                graceful_failed = True
                 logger.debug(f"關閉 {name} 時發生非致命錯誤: {e}")
         # 給 driver 一點時間送完未竟訊息，再停止（緩解關閉競態）
         time.sleep(0.3)
-        self._safe_stop_driver()
+        if not self._safe_stop_driver():
+            graceful_failed = True
+        if graceful_failed and cross_thread:
+            # sync API 物件綁定建立執行緒，跨執行緒優雅關閉失敗屬預期情況：
+            # 直接終止 driver 程序樹，確保不殘留會拋 EPIPE 的 Node 程序
+            logger.warning("跨執行緒優雅關閉失敗，強制終止 Playwright driver 程序樹")
+            self._kill_driver_process_tree()
         self._page = self._context = self._browser = None
+        self._driver_pid = None
         _ACTIVE_SCRAPERS.discard(self)
         logger.info("Playwright 瀏覽器已關閉")
 
-    def _safe_stop_driver(self) -> None:
+    def _safe_stop_driver(self) -> bool:
+        """回傳是否成功停止（或本來就沒有 driver）"""
+        ok = True
         try:
             if self._pw:
                 self._pw.stop()
         except Exception as e:
+            ok = False
             logger.debug(f"停止 Playwright driver 時發生非致命錯誤: {e}")
         self._pw = None
+        return ok
+
+    def _detect_driver_pid(self) -> Optional[int]:
+        """取得 Playwright driver（Node 子程序）PID。依賴 SDK 私有屬性，
+        取不到時回傳 None（僅失去 taskkill 保險，不影響正常功能）。"""
+        try:
+            proc = self._pw._connection._transport._proc  # noqa: SLF001（無公開 API）
+            return getattr(proc, "pid", None)
+        except Exception:
+            return None
+
+    def _kill_driver_process_tree(self) -> None:
+        """強制終止 driver 程序樹：Windows 用 taskkill /T /F，其他平台用 SIGKILL"""
+        pid = self._driver_pid
+        if not pid:
+            logger.debug("無 driver PID 可供強制終止（偵測失敗或已關閉）")
+            return
+        try:
+            if sys.platform.startswith("win"):
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                               capture_output=True, timeout=10)
+            else:
+                os.kill(pid, signal.SIGKILL)
+            logger.info(f"已強制終止 Playwright driver 程序樹（PID {pid}）")
+        except Exception as e:
+            logger.debug(f"強制終止 driver 程序樹失敗（可能已結束）: {e}")
 
     def __enter__(self):
         self.start()

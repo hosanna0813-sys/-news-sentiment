@@ -2,13 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Note on repo state**: The README below documents a full `app/` (UI, controllers, services,
-> repositories, models, workers, prompts, exporters, utils) and `tests/` source tree. As of the
-> last check, **neither `app/` nor `tests/` exist on disk** in this folder — only `README.md`,
-> `requirements.txt`, `run_desktop.py`, `run_desktop.bat`, and `run_desktop_debug.bat` are present.
-> `run_desktop.py` imports `app.controllers.app_context` and `app.ui.main_window`, which do not
-> currently resolve. Treat the architecture/commands below as the intended design per README,
-> but verify against actual files before assuming any module exists.
+> **Note on repo state**: `app/` and `tests/` were reconstructed from the README on 2026-07-04
+> (the original source tree was lost before being committed). The six fixes recorded in
+> `HANDOFF.md` (Playwright EPIPE cleanup_fn, prompt editor upgrade, Word export layout,
+> model-output artifact stripping, 180-char summary cap, manual body editing) have been
+> re-implemented on top of the reconstruction — read `HANDOFF.md` first for details and caveats.
 
 ## Project
 

@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any, List, Callable
 
 from app.utils.logging_setup import get_logger
-from app.utils.text_utils import safe_json_loads
+from app.utils.text_utils import safe_json_loads, strip_artifacts_deep, strip_model_artifacts
 from app.services.ai.model_capabilities import (
     sanitize_params, get_capability, strip_learned_unsupported,
     record_unsupported_param, detect_unsupported_param,
@@ -244,8 +244,9 @@ class ModelGateway:
                 if tool_block is None:
                     raise GatewayError(GatewayErrorType.PARSE_ERROR, "模型未回傳 tool_use 區塊")
                 return ToolUseResult(
-                    data=tool_block.input,
-                    raw_text=getattr(text_block, "text", "") if text_block else "",
+                    data=strip_artifacts_deep(tool_block.input),
+                    raw_text=strip_model_artifacts(
+                        getattr(text_block, "text", "") if text_block else ""),
                     model_used=model_id,
                     stop_reason=resp.stop_reason,
                     usage={"input_tokens": resp.usage.input_tokens,
@@ -308,7 +309,7 @@ class ModelGateway:
                 parsed = safe_json_loads(text)
                 if parsed is None:
                     raise GatewayError(GatewayErrorType.PARSE_ERROR, f"JSON 解析失敗，原始回應：{text[:200]}")
-                return parsed
+                return strip_artifacts_deep(parsed)
             except GatewayError as ge:
                 last_error = ge
                 if ge.error_type == GatewayErrorType.NOT_CONFIGURED:
@@ -338,4 +339,4 @@ class ModelGateway:
             messages=[{"role": "user", "content": user_content}],
         )
         text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
-        return getattr(text_block, "text", "") if text_block else ""
+        return strip_model_artifacts(getattr(text_block, "text", "") if text_block else "")

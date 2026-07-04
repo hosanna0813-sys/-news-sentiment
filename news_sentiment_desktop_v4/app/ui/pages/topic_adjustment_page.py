@@ -110,10 +110,17 @@ class TopicAdjustmentPage(QWidget):
         btn_delete_empty.clicked.connect(self._on_delete_empty_topics)
         right_layout.addWidget(btn_delete_empty)
 
-        right_layout.addWidget(QLabel("新聞正文 / AI 分群理由預覽："))
+        right_layout.addWidget(QLabel("新聞正文（可直接編輯）/ AI 分群理由："))
+        self.preview_info = QLabel("")
+        self.preview_info.setWordWrap(True)
+        right_layout.addWidget(self.preview_info)
+        # V4.2.1：正文改為可編輯——抓取失敗/正文不足的新聞可人工貼上或補完正文，
+        # 儲存後狀態設為成功，即可進入分群/綜整流程
         self.preview_text = QTextEdit()
-        self.preview_text.setReadOnly(True)
         right_layout.addWidget(self.preview_text, 1)
+        self.btn_save_body = QPushButton("儲存正文修改（狀態將設為成功）")
+        self.btn_save_body.clicked.connect(self._on_save_body_edit)
+        right_layout.addWidget(self.btn_save_body)
 
         splitter.addWidget(right_box)
         splitter.setStretchFactor(0, 2)
@@ -207,7 +214,7 @@ class TopicAdjustmentPage(QWidget):
                          ai_original_value=old_topic, human_final_value="（不納入任何議題）",
                          action="human_drag_unassign", operator="user")
 
-    # ---------- 預覽 ----------
+    # ---------- 預覽 / 正文編輯 ----------
     def _on_item_selected_preview(self):
         sender = self.sender()
         items = sender.selectedItems() if sender else []
@@ -217,8 +224,45 @@ class TopicAdjustmentPage(QWidget):
         it = self.ctx.news_repo.get(row_id)
         if not it:
             return
-        text = f"【{it.title}】\n分群理由：{it.clustering_reason or '（無）'}\n\n正文：\n{it.body_text or '（無正文）'}"
-        self.preview_text.setPlainText(text)
+        self._preview_row_id = row_id
+        self.preview_info.setText(
+            f"【{it.title}】（狀態：{it.body_fetch_status or '未抓取'}）\n"
+            f"分群理由：{it.clustering_reason or '（無）'}")
+        self.preview_text.setPlainText(it.body_text or "")
+
+    def _on_save_body_edit(self):
+        """人工編輯/補完正文：儲存後狀態設為成功（可進分群/綜整），記 feedback log"""
+        row_id = getattr(self, "_preview_row_id", None)
+        if not row_id:
+            QMessageBox.information(self, "提示", "請先在左側或中間清單選取一則新聞")
+            return
+        it = self.ctx.news_repo.get(row_id)
+        if not it:
+            return
+        new_body = self.preview_text.toPlainText().strip()
+        if not new_body:
+            QMessageBox.information(self, "提示", "正文內容為空，未儲存")
+            return
+        if new_body == (it.body_text or "").strip():
+            QMessageBox.information(self, "提示", "正文內容未變更")
+            return
+        import time
+        from app.utils.text_utils import word_count_cjk_aware
+        old_status = it.body_fetch_status or "未抓取"
+        self.ctx.news_repo.update_fields(row_id, {
+            "body_text": new_body,
+            "body_source": "人工編輯正文",
+            "body_fetch_status": "成功",
+            "body_fetch_detail": "人工編輯/補完正文",
+            "body_fetched_at": time.time(),
+            "body_word_count": word_count_cjk_aware(new_body),
+            "body_quality_score": 1.0,
+        })
+        log_feedback(self.ctx.feedback_repo, batch_id="", entity_type="scraping", entity_id=row_id,
+                     ai_original_value=f"狀態：{old_status}", human_final_value="人工編輯正文（狀態改為成功）",
+                     action="human_edit_body", operator="user")
+        self.preview_info.setText(f"【{it.title}】（狀態：成功）\n分群理由：{it.clustering_reason or '（無）'}")
+        QMessageBox.information(self, "已儲存", "正文已更新，狀態設為成功（可進入分群/綜整）")
 
     # ---------- 操作 ----------
     def _selected_row_ids(self, list_widget: QListWidget) -> List[str]:

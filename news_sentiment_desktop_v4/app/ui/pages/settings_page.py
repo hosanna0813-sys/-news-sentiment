@@ -193,7 +193,19 @@ class SettingsPage(QWidget):
         self.ctx.save_settings()
         QMessageBox.information(self, "已儲存", "任務模型設定已儲存")
 
-    # ---------- Prompt 編輯器 ----------
+    # ---------- Prompt 編輯器（V4.2.1 全面升級） ----------
+    # 任務 → 儲存後需重跑的步驟（提示用）
+    _PROMPT_TASK_RERUN_HINTS = {
+        "retention_prefilter": "步驟 2（留用初判）",
+        "retention_judgement": "步驟 2（留用初判）",
+        "topic_clustering": "步驟 4（議題分群）",
+        "topic_merge": "步驟 4（議題分群）",
+        "topic_naming": "步驟 4（議題分群）",
+        "topic_summarization": "步驟 6（議題綜整）",
+        "stance_analysis": "步驟 6（議題綜整／立場分析）",
+        "rule_draft": "規則草案產生",
+    }
+
     def _build_prompt_tab(self) -> QWidget:
         w = QWidget()
         layout = QHBoxLayout(w)
@@ -206,15 +218,37 @@ class SettingsPage(QWidget):
 
         editor_box = QWidget()
         editor_layout = QVBoxLayout(editor_box)
+
+        # 版本歷史下拉 + 啟用此版本
+        version_row = QHBoxLayout()
+        version_row.addWidget(QLabel("版本歷史："))
+        self.prompt_version_combo = QComboBox()
+        self.prompt_version_combo.currentIndexChanged.connect(self._on_prompt_version_selected)
+        version_row.addWidget(self.prompt_version_combo, 1)
+        self.btn_activate_version = QPushButton("啟用此版本")
+        self.btn_activate_version.clicked.connect(self._on_activate_prompt_version)
+        version_row.addWidget(self.btn_activate_version)
+        editor_layout.addLayout(version_row)
+
         editor_layout.addWidget(QLabel("System Prompt："))
         self.system_prompt_edit = QTextEdit()
         editor_layout.addWidget(self.system_prompt_edit, 2)
-        editor_layout.addWidget(QLabel("User Template（可用 {變數} 佔位符）："))
+        editor_layout.addWidget(QLabel("User Template（可用 {變數} 佔位符；缺少預設佔位符時儲存前會警告）："))
         self.user_template_edit = QTextEdit()
         editor_layout.addWidget(self.user_template_edit, 2)
 
+        editor_layout.addWidget(QLabel(
+            "Tool Schema（JSON）——schema 的 required 決定模型「必填」欄位，"
+            "prompt 文字無法覆蓋它；欄位輸出異常時請優先檢查這裡："))
+        self.tool_schema_edit = QTextEdit()
+        self.tool_schema_edit.setAcceptRichText(False)
+        editor_layout.addWidget(self.tool_schema_edit, 2)
+
         self.prompt_version_label = QLabel("")
         editor_layout.addWidget(self.prompt_version_label)
+        hint = QLabel("⚠ 儲存或切換版本後，需重跑對應步驟才會生效（例如綜整 Prompt → 重跑步驟 6）")
+        hint.setWordWrap(True)
+        editor_layout.addWidget(hint)
 
         btn_row = QHBoxLayout()
         btn_save_prompt = QPushButton("儲存為新版本")
@@ -228,29 +262,121 @@ class SettingsPage(QWidget):
         layout.addWidget(editor_box, 3)
         return w
 
+    @staticmethod
+    def _format_schema_json(schema_json: str) -> str:
+        """Schema JSON 以縮排格式呈現，便於編輯；無法解析時原樣顯示"""
+        try:
+            return json.dumps(json.loads(schema_json or "{}"), ensure_ascii=False, indent=2)
+        except Exception:
+            return schema_json or "{}"
+
+    def _load_prompt_cfg_into_editors(self, cfg: PromptConfig):
+        self.system_prompt_edit.setPlainText(cfg.system_prompt)
+        self.user_template_edit.setPlainText(cfg.user_template)
+        self.tool_schema_edit.setPlainText(self._format_schema_json(cfg.tool_schema_json))
+        self._current_prompt_cfg = cfg
+
+    def _refresh_prompt_versions(self, task: str):
+        """重建版本歷史下拉，並將編輯器載入目前啟用版本"""
+        from app.prompts.registry import get_active_prompt
+        active = get_active_prompt(self.ctx.prompt_repo, task)
+        versions = self.ctx.prompt_repo.list_versions(task)
+        self.prompt_version_combo.blockSignals(True)
+        self.prompt_version_combo.clear()
+        for v in versions:
+            label = f"v{v.version}"
+            if v.enabled:
+                label += "（啟用中）"
+            if v.is_default:
+                label += "（系統預設）"
+            self.prompt_version_combo.addItem(label, v.version)
+        idx = self.prompt_version_combo.findData(active.version)
+        if idx >= 0:
+            self.prompt_version_combo.setCurrentIndex(idx)
+        self.prompt_version_combo.blockSignals(False)
+        self._load_prompt_cfg_into_editors(active)
+        self.prompt_version_label.setText(
+            f"目前啟用版本：v{active.version}　是否為系統預設：{active.is_default}")
+
     def _on_prompt_task_selected(self, task: str):
         if not task:
             return
-        from app.prompts.registry import get_active_prompt
-        cfg = get_active_prompt(self.ctx.prompt_repo, task)
-        self.system_prompt_edit.setPlainText(cfg.system_prompt)
-        self.user_template_edit.setPlainText(cfg.user_template)
-        self.prompt_version_label.setText(f"目前版本：v{cfg.version}　是否為預設：{cfg.is_default}")
         self._current_prompt_task = task
-        self._current_prompt_cfg = cfg
+        self._refresh_prompt_versions(task)
+
+    def _on_prompt_version_selected(self, index: int):
+        """下拉切換版本：載入該版本內容供檢視/比較（尚未啟用，需按「啟用此版本」）"""
+        task = getattr(self, "_current_prompt_task", None)
+        if not task or index < 0:
+            return
+        version = self.prompt_version_combo.itemData(index)
+        cfg = next((v for v in self.ctx.prompt_repo.list_versions(task)
+                    if v.version == version), None)
+        if cfg is None:
+            return
+        self._load_prompt_cfg_into_editors(cfg)
+        state = "啟用中" if cfg.enabled else "未啟用（按「啟用此版本」切換）"
+        self.prompt_version_label.setText(f"檢視版本：v{cfg.version}　狀態：{state}")
+
+    def _on_activate_prompt_version(self):
+        task = getattr(self, "_current_prompt_task", None)
+        if not task:
+            return
+        version = self.prompt_version_combo.currentData()
+        if version is None:
+            return
+        self.ctx.prompt_repo.activate_version(task, version)
+        self._refresh_prompt_versions(task)
+        QMessageBox.information(
+            self, "已啟用",
+            f"已啟用 v{version}。\n注意：需重跑{self._PROMPT_TASK_RERUN_HINTS.get(task, '對應步驟')}才會生效。")
+
+    def _missing_default_placeholders(self, task: str, new_template: str) -> list:
+        """缺漏警告：找出「系統預設模板有、但新模板沒有」的佔位符。
+        缺少佔位符代表模型將收不到該資料（safe_format 只是不噴錯，不會補資料）。"""
+        from app.prompts.registry import _DEFAULTS
+        from app.utils.text_utils import extract_placeholders
+        default_template = _DEFAULTS.get(task, {}).get("user_template", "")
+        missing = extract_placeholders(default_template) - extract_placeholders(new_template)
+        return sorted(missing)
 
     def _on_save_prompt(self):
         task = getattr(self, "_current_prompt_task", None)
         if not task:
             return
+        # 1) Tool Schema JSON 格式驗證
+        schema_text = self.tool_schema_edit.toPlainText().strip() or "{}"
+        try:
+            parsed_schema = json.loads(schema_text)
+            if not isinstance(parsed_schema, dict):
+                raise ValueError("最外層必須是 JSON 物件（{...}）")
+        except Exception as e:
+            QMessageBox.critical(self, "Tool Schema 格式錯誤",
+                                  f"Tool Schema 不是合法 JSON，未儲存：\n{e}")
+            return
+        # 2) 佔位符缺漏警告
+        new_template = self.user_template_edit.toPlainText()
+        missing = self._missing_default_placeholders(task, new_template)
+        if missing:
+            confirm = QMessageBox.question(
+                self, "佔位符缺漏警告",
+                "新模板缺少預設佔位符：{" + "}、{".join(missing) + "}\n"
+                "缺少的佔位符對應的資料將不會提供給模型，可能導致輸出不完整。\n"
+                "仍要儲存嗎？")
+            if confirm != QMessageBox.Yes:
+                return
+        # 3) 儲存為新版本（自動成為啟用版本）
         cfg = PromptConfig(
             task=task, system_prompt=self.system_prompt_edit.toPlainText(),
-            user_template=self.user_template_edit.toPlainText(),
-            tool_schema_json=self._current_prompt_cfg.tool_schema_json,
+            user_template=new_template,
+            tool_schema_json=json.dumps(parsed_schema, ensure_ascii=False),
         )
         new_cfg = self.ctx.prompt_repo.save_new_version(cfg)
-        self.prompt_version_label.setText(f"目前版本：v{new_cfg.version}（已儲存）")
-        QMessageBox.information(self, "已儲存", f"Prompt 已儲存為新版本 v{new_cfg.version}")
+        self._refresh_prompt_versions(task)
+        QMessageBox.information(
+            self, "已儲存",
+            f"Prompt 已儲存為新版本 v{new_cfg.version} 並啟用。\n"
+            f"注意：需重跑{self._PROMPT_TASK_RERUN_HINTS.get(task, '對應步驟')}才會生效。")
 
     def _on_restore_prompt(self):
         task = getattr(self, "_current_prompt_task", None)
@@ -258,9 +384,8 @@ class SettingsPage(QWidget):
             return
         restored = self.ctx.prompt_repo.restore_default(task)
         if restored:
-            self.system_prompt_edit.setPlainText(restored.system_prompt)
-            self.user_template_edit.setPlainText(restored.user_template)
-            self.prompt_version_label.setText(f"已還原預設，目前版本：v{restored.version}")
+            self._refresh_prompt_versions(task)
+            self.prompt_version_label.setText(f"已還原預設，目前啟用版本：v{restored.version}")
 
     # ---------- 抓取設定 ----------
     def _build_scraping_tab(self) -> QWidget:

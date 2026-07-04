@@ -20,6 +20,7 @@ from app.services.ai.model_gateway import ModelGateway, GatewayError
 from app.services.summarization.summarization_service import summarize_topic
 from app.services.stance.stance_service import analyze_stance
 from app.prompts.registry import get_active_prompt
+from app.utils.text_utils import truncate_at_sentence
 from app.utils.logging_setup import get_logger
 
 logger = get_logger("topic_analysis_worker")
@@ -77,7 +78,8 @@ class TopicAnalysisWorker(QThread):
                     summ_schema["schema"], MAP_REDUCE_CHUNK_SYSTEM_PROMPT, MAP_REDUCE_CHUNK_USER_TEMPLATE,
                 )
                 self.topic_repo.update_fields(topic.topic_id, {
-                    "summary_150": summary_data.get("summary_150", ""),
+                    # 180 字保險：prompt 已要求上限，模型偶爾超長時於句尾截斷再落庫
+                    "summary_150": truncate_at_sentence(summary_data.get("summary_150", ""), 180),
                     "summary_300": summary_data.get("summary_300", ""),
                     "summary_full": summary_data.get("summary_full", ""),
                     "development_progress": summary_data.get("development_progress", ""),

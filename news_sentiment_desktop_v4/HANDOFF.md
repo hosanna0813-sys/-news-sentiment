@@ -3,6 +3,20 @@
 新聞輿情系統 Desktop V4(PySide6 + Anthropic API)。功能與架構詳見 README.md。
 本檔記錄 2026-07-03 與 Claude Code 協作的修改內容與待辦事項,供跨機器接續開發。
 
+## ⚠ 2026-07-04 重建說明(請先讀這段)
+
+7/3 實際修改過的程式碼在重建 repo 前遺失(當時 app/ 未入版控)。目前 repo 的
+app/ 與 tests/ 為 7/4 依 README 重新實作的版本,其後已依本檔「已完成的修改」
+一節**逐項重新實作全部 6 項修改**(commit 見 git log),並補上對應測試,
+pytest tests 全數通過(118 個)。與 7/3 原版的差異注意事項:
+
+1. 各項修改為「依本檔紀錄重建」,行為對齊紀錄描述,但**未在真實 Windows
+   環境重新驗證**(尤其 Playwright EPIPE 修正原版註明「已在真實使用驗證」,
+   重建版請於實際抓取時再次確認不崩潰)。
+2. Word 匯出預設字型已改為標楷體;但若使用者 DB 已儲存舊設定(微軟正黑體),
+   需在「系統設定 → Word 輸出樣式」手動改為標楷體儲存一次。
+3. 使用者資料(%APPDATA% 資料庫、prompt v5)不受重建影響,照常沿用。
+
 ## ⚠ 換電腦必做(資料不在專案資料夾內!)
 
 1. **應用程式資料**位於 `%APPDATA%\NewsSentimentDesktopV4\`(資料庫、Prompt 版本、
@@ -14,9 +28,9 @@
 3. 環境建置:`python -m venv .venv` → `.venv\Scripts\pip install -r requirements.txt`
    → `.venv\Scripts\python -m playwright install chromium` → `python run_desktop.py --debug`。
    (或直接執行 run_desktop.bat)
-4. 測試:`.venv\Scripts\python -m pytest tests -v`(目前 42 個全數通過)。
+4. 測試:`.venv\Scripts\python -m pytest tests -v`(目前 118 個全數通過)。
 
-## 已完成的修改(本次協作)
+## 已完成的修改(7/3 原始協作紀錄;7/4 已全部依此重建,見上方重建說明)
 
 1. **Playwright EPIPE 崩潰修正**(已在真實使用驗證):
    - `batch_job_worker.py` 新增 `cleanup_fn` 參數,於 `run()` 的 finally 在

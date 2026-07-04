@@ -141,21 +141,22 @@ def build_scraping_worker(items: List[NewsItem], scraper: BodyScraper,
         news_repo.update_fields_bulk(updates)
         return BatchOutcome(success=True, success_count=success_count, skipped_count=skipped_count)
 
-    worker = BatchJobWorker(
-        job_type="scraping", item_batches=batches, process_batch_fn=process,
-        job_repo=job_repo, batch_repo=batch_repo, resume_job_id=resume_job_id,
-        job_label_fn=lambda it: it.row_id,
-    )
-
-    # 工作結束（完成/取消）時關閉瀏覽器
-    def _cleanup(*args):
+    # 工作結束（完成/取消/例外）時關閉瀏覽器。
+    # V4.2.1：改走 BatchJobWorker 的 cleanup_fn（在 worker 執行緒的 finally 執行），
+    # 不可接 finished_job signal——slot 會排到主執行緒且屆時 worker 執行緒已結束，
+    # Playwright sync API 物件綁定建立執行緒，跨執行緒關閉會造成 driver EPIPE 崩潰。
+    def _cleanup():
         s = browser_state.get("scraper")
         if s is not None:
             try:
                 s.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"關閉瀏覽器渲染抓取器時發生錯誤: {e}")
             browser_state["scraper"] = None
 
-    worker.finished_job.connect(_cleanup)
+    worker = BatchJobWorker(
+        job_type="scraping", item_batches=batches, process_batch_fn=process,
+        job_repo=job_repo, batch_repo=batch_repo, resume_job_id=resume_job_id,
+        job_label_fn=lambda it: it.row_id, cleanup_fn=_cleanup,
+    )
     return worker

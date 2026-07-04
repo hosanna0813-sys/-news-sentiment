@@ -73,7 +73,7 @@ class WordExportSettings:
     header_text: str = ""
     footer_text: str = ""
     date_format: str = "%Y年%m月%d日"
-    font_name: str = "微軟正黑體"
+    font_name: str = "標楷體"
     font_size_pt: int = 12
     heading_style: str = "Heading 1"
     paragraph_spacing_pt: int = 6
