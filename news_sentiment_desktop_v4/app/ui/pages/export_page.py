@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.controllers.app_context import AppContext
-from app.exporters.word_exporter import export_daily_report
+from app.exporters.word_exporter import export_daily_report, export_simple_topic_list
 from app.utils.paths import get_exports_dir
 
 
@@ -49,6 +49,10 @@ class ExportPage(QWidget):
         btn_export.clicked.connect(self._on_export)
         root.addWidget(btn_export)
 
+        btn_simple = QPushButton("匯出簡易清單（議題＋標題＋連結）")
+        btn_simple.clicked.connect(self._on_export_simple)
+        root.addWidget(btn_simple)
+
         self.status_label = QLabel("")
         root.addWidget(self.status_label)
         root.addStretch()
@@ -80,6 +84,28 @@ class ExportPage(QWidget):
                 self.path_edit.text(), topics, news_by_topic, stances_by_topic,
                 missing_body_news, settings,
             )
+            self.status_label.setText(f"匯出成功：{out_path}")
+            QMessageBox.information(self, "匯出成功", f"已輸出至：\n{out_path}")
+        except Exception as e:
+            self.status_label.setText(f"匯出失敗：{e}")
+            QMessageBox.critical(self, "匯出失敗", str(e))
+
+    def _on_export_simple(self):
+        """簡易清單：議題名稱分組，底下每則新聞「標題＋連結」，不含摘要等內容"""
+        try:
+            topics = self.ctx.topic_repo.list_active()
+            if not topics:
+                self.status_label.setText("目前沒有議題可匯出，請先完成議題分群")
+                return
+            path, _ = QFileDialog.getSaveFileName(
+                self, "另存簡易議題清單", str(get_exports_dir() / "新聞議題清單.docx"),
+                "Word 文件 (*.docx)")
+            if not path:
+                return
+            news_by_topic = {t.topic_id: self.ctx.news_repo.list_by_topic(t.topic_id)
+                              for t in topics}
+            out_path = export_simple_topic_list(
+                path, topics, news_by_topic, self.ctx.settings.word_export)
             self.status_label.setText(f"匯出成功：{out_path}")
             QMessageBox.information(self, "匯出成功", f"已輸出至：\n{out_path}")
         except Exception as e:

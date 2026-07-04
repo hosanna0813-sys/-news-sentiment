@@ -148,6 +148,43 @@ def export_daily_report(
     return str(out_path)
 
 
+def export_simple_topic_list(
+    output_path: str,
+    topics: List[Topic],
+    news_by_topic: Dict[str, List[NewsItem]],
+    settings: WordExportSettings,
+) -> str:
+    """簡易清單匯出：議題名稱當標題分組，底下每則新聞「標題＋連結」各一行。
+    不含摘要、立場、統計等內容——供快速分享/剪貼用，與完整早報並存。"""
+    from docx import Document
+    from docx.shared import Pt
+
+    doc = Document()
+    doc.styles["Normal"].font.size = Pt(settings.font_size_pt)
+    for style_name in _CJK_STYLE_NAMES:
+        try:
+            _apply_cjk_font(doc.styles[style_name], settings.font_name)
+        except KeyError:
+            continue
+
+    for topic in topics:
+        items = news_by_topic.get(topic.topic_id, [])
+        if not items:
+            continue  # 空議題跳過
+        doc.add_heading(topic.topic_name, level=1)
+        for it in items:
+            doc.add_paragraph(it.title)
+            if it.url:
+                p = doc.add_paragraph()
+                _add_hyperlink(p, it.url, it.url, settings.font_name)
+
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(str(out_path))
+    logger.info(f"簡易議題清單已輸出: {out_path}")
+    return str(out_path)
+
+
 def _apply_cjk_font(style, font_name: str) -> None:
     """同時設定西文字型與 w:eastAsia 中文字型。
     python-docx 的 style.font.name 只設 w:ascii/w:hAnsi，CJK 字元會回退為
