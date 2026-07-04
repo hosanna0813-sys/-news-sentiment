@@ -108,27 +108,57 @@ def collect_correction_items(conn: sqlite3.Connection) -> list:
 
 
 def collect_control_items(conn: sqlite3.Connection, exclude_ids: set,
-                           per_class: int, rng: random.Random) -> list:
-    """對照樣本：AI 判過、無人工修正的新聞，依留用/不留用分層各抽 per_class 則"""
+                           per_class: int, rng: random.Random) -> tuple:
+    """對照樣本：AI 判過、無人工修正的新聞，依留用/不留用分層各抽 per_class 則。
+
+    使用者的正式資料庫來自舊版程式，欄位與狀態字串可能與重建版不同，
+    因此「已判過」的認定條件逐步放寬，並回傳實際採用的條件供診斷。
+    回傳 (items, used_filter_desc)。
+    """
     news_columns = {r[1] for r in conn.execute("PRAGMA table_info(news)")}
-    # 舊版 schema 可能沒有 retention_judged_at：退而以狀態非「待確認」代表已判過
-    judged_cond = ("retention_judged_at IS NOT NULL AND retention_status != '待確認'"
-                    if "retention_judged_at" in news_columns
-                    else "retention_status != '待確認'")
-    out = []
-    for retained_value in (1, 0):
+    filters = []
+    if "retention_judged_at" in news_columns:
+        filters.append(("judged_at 非空且狀態非待確認",
+                         "retention_judged_at IS NOT NULL AND retention_status != '待確認'"))
+    if "retention_status" in news_columns:
+        filters.append(("狀態非待確認且非空", "retention_status NOT IN ('待確認','') "
+                                              "AND retention_status IS NOT NULL"))
+    if "priority_stars" in news_columns:
+        filters.append(("有星等評分（priority_stars>0）", "priority_stars > 0"))
+    if "retention_reason" in news_columns:
+        filters.append(("有判斷理由", "retention_reason IS NOT NULL AND retention_reason != ''"))
+    filters.append(("全部新聞（最後手段，含未判過者，結果請保守解讀）", "1=1"))
+
+    for desc, cond in filters:
+        out = []
+        for retained_value in (1, 0):
+            rows = conn.execute(f"SELECT * FROM news WHERE {cond} AND retained=?",
+                                 (retained_value,)).fetchall()
+            rows = [r for r in rows if r["row_id"] not in exclude_ids]
+            if len(rows) > per_class:
+                rows = rng.sample(rows, per_class)
+            for row in rows:
+                item = _news_row_to_item(row)
+                item["group"] = "control"
+                item["direction"] = ""
+                out.append(item)
+        if out:
+            return out, desc
+    return [], "（所有條件都找不到對照樣本）"
+
+
+def print_status_distribution(conn: sqlite3.Connection) -> None:
+    """診斷用：印出資料庫實際的 retention_status 分佈與總數"""
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM news").fetchone()[0]
         rows = conn.execute(
-            f"SELECT * FROM news WHERE {judged_cond} AND retained=?",
-            (retained_value,)).fetchall()
-        rows = [r for r in rows if r["row_id"] not in exclude_ids]
-        if len(rows) > per_class:
-            rows = rng.sample(rows, per_class)
-        for row in rows:
-            item = _news_row_to_item(row)
-            item["group"] = "control"
-            item["direction"] = ""
-            out.append(item)
-    return out
+            "SELECT COALESCE(retention_status,'(NULL)') s, COUNT(*) c FROM news "
+            "GROUP BY s ORDER BY c DESC").fetchall()
+        print(f"（診斷）news 共 {total} 則，retention_status 分佈：")
+        for r in rows:
+            print(f"    {r[0]!r}: {r[1]} 則")
+    except Exception as e:
+        print(f"（診斷資訊讀取失敗：{e}）")
 
 
 def build_dataset(db_path: str, control_per_class: int, seed: int) -> dict:
@@ -139,8 +169,8 @@ def build_dataset(db_path: str, control_per_class: int, seed: int) -> dict:
     try:
         rng = random.Random(seed)
         corrections = collect_correction_items(conn)
-        controls = collect_control_items(conn, {i["row_id"] for i in corrections},
-                                          control_per_class, rng)
+        controls, control_filter = collect_control_items(
+            conn, {i["row_id"] for i in corrections}, control_per_class, rng)
         items = corrections + controls
         counts = {
             "correction_total": len(corrections),
@@ -159,6 +189,7 @@ def build_dataset(db_path: str, control_per_class: int, seed: int) -> dict:
                 "db_path": db_path,
                 "seed": seed,
                 "control_per_class": control_per_class,
+                "control_filter": control_filter,
                 "counts": counts,
                 "note": ("ground_truth=人工覆核後的最終留用狀態；"
                           "control 樣本為 AI 判斷後未被人工修改者（視為默認接受）"),
@@ -185,10 +216,18 @@ def main() -> None:
     print(f"修正樣本（難題）：{c['correction_total']} 則"
           f"（AI過嚴 {c['correction_ai_too_strict']}、AI過寬 {c['correction_ai_too_lenient']}、"
           f"其他 {c['correction_total'] - c['correction_ai_too_strict'] - c['correction_ai_too_lenient']}）")
-    print(f"對照樣本：留用 {c['control_retained']} 則、不留用 {c['control_not_retained']} 則")
+    print(f"對照樣本：留用 {c['control_retained']} 則、不留用 {c['control_not_retained']} 則"
+          f"（採用條件：{dataset['meta']['control_filter']}）")
     print(f"總計：{c['total']} 則 → {args.out}")
     if c["correction_total"] < 30:
         print("⚠ 修正樣本偏少（<30），比較結果的可信度會下降，建議累積更多人工覆核後再測")
+    if c["control_retained"] + c["control_not_retained"] == 0:
+        print("⚠ 找不到對照樣本！以下診斷資訊請貼回給 Claude：")
+        conn = sqlite3.connect(args.db)
+        try:
+            print_status_distribution(conn)
+        finally:
+            conn.close()
 
 
 if __name__ == "__main__":
