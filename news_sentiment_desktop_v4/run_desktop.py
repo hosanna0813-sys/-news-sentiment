@@ -27,6 +27,8 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("新聞輿情系統 Desktop V4.0")
     app.setOrganizationName("NewsSentimentDesktopV4")
+    # 全域按鈕樣式：加大 padding 讓按鈕在各頁面都更明顯、更好點擊
+    app.setStyleSheet("QPushButton { padding: 6px 14px; }")
 
     ctx = AppContext(debug=args.debug)
 

@@ -29,6 +29,11 @@ python-docx>=1.1.0
 # ---- API Key 安全儲存（Windows Credential Manager / DPAPI） ----
 keyring>=24.3.0
 
+# ---- Gmail 新聞來源匯入（OAuth，唯讀 scope） ----
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
 # ---- 打包為 exe（規格要求可未來支援） ----
 pyinstaller>=6.3.0
 

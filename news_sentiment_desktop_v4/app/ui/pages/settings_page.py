@@ -1,0 +1,451 @@
+"""系統設定頁面 — 對應規格書 四（API/模型）、十六（Prompt）、八（抓取）、十四（Word樣式）"""
+from __future__ import annotations
+
+import json
+
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QFormLayout,
+    QGroupBox, QTabWidget, QComboBox, QSpinBox, QDoubleSpinBox, QCheckBox, QMessageBox,
+    QTextEdit, QListWidget, QListWidgetItem, QSplitter, QFileDialog, QScrollArea,
+)
+from PySide6.QtCore import Qt
+
+from app.controllers.app_context import AppContext
+from app.utils.secure_key_store import (
+    save_api_key, load_api_key, clear_api_key, mask_api_key,
+    load_gmail_credentials, clear_gmail_credentials,
+)
+from app.models.prompt_config import PromptConfig, PROMPT_TASKS
+from app.models.settings import ModelTaskConfig
+from app.workers.gmail_import_worker import GmailAuthWorker
+
+MODEL_CHOICES = ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-4-8"]
+
+
+class SettingsPage(QWidget):
+    def __init__(self, ctx: AppContext, parent=None):
+        super().__init__(parent)
+        self.ctx = ctx
+        self._build_ui()
+
+    def _build_ui(self):
+        root = QVBoxLayout(self)
+        title = QLabel("系統設定")
+        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        root.addWidget(title)
+
+        tabs = QTabWidget()
+        tabs.addTab(self._scrollable(self._build_api_tab()), "Anthropic API")
+        tabs.addTab(self._scrollable(self._build_model_tab()), "任務模型設定")
+        tabs.addTab(self._build_prompt_tab(), "Prompt 編輯器")  # 編輯器需要撐滿高度，不包捲動區
+        tabs.addTab(self._scrollable(self._build_scraping_tab()), "正文抓取設定")
+        tabs.addTab(self._scrollable(self._build_word_tab()), "Word 輸出樣式")
+        tabs.addTab(self._scrollable(self._build_gmail_tab()), "Gmail 匯入設定")
+        root.addWidget(tabs, 1)
+
+    @staticmethod
+    def _scrollable(widget: QWidget) -> QWidget:
+        """把分頁內容包進可捲動區域，避免欄位一多超出視窗高度就被裁掉看不到"""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(widget)
+        return scroll
+
+    # ---------- API Key ----------
+    def _build_api_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        key_group = QGroupBox("Anthropic API Key")
+        form = QFormLayout(key_group)
+        self.key_display = QLabel(mask_api_key(load_api_key()))
+        self.key_input = QLineEdit()
+        self.key_input.setEchoMode(QLineEdit.Password)
+        self.key_input.setPlaceholderText("輸入新的 API Key（sk-ant-...）")
+        form.addRow("目前狀態：", self.key_display)
+        form.addRow("新的 API Key：", self.key_input)
+
+        btn_row = QHBoxLayout()
+        btn_save = QPushButton("儲存")
+        btn_save.clicked.connect(self._on_save_key)
+        btn_test = QPushButton("測試連線")
+        btn_test.clicked.connect(self._on_test_key)
+        btn_clear = QPushButton("一鍵清除")
+        btn_clear.clicked.connect(self._on_clear_key)
+        btn_row.addWidget(btn_save)
+        btn_row.addWidget(btn_test)
+        btn_row.addWidget(btn_clear)
+        form.addRow(btn_row)
+        layout.addWidget(key_group)
+
+        self.key_status_label = QLabel("")
+        layout.addWidget(self.key_status_label)
+
+        api_group = QGroupBox("API 呼叫設定")
+        api_form = QFormLayout(api_group)
+        self.timeout_spin = QSpinBox()
+        self.timeout_spin.setRange(5, 600)
+        self.timeout_spin.setValue(self.ctx.settings.api.request_timeout_sec)
+        self.retry_spin = QSpinBox()
+        self.retry_spin.setRange(0, 10)
+        self.retry_spin.setValue(self.ctx.settings.api.max_retries)
+        self.backoff_spin = QDoubleSpinBox()
+        self.backoff_spin.setRange(0.5, 30.0)
+        self.backoff_spin.setValue(self.ctx.settings.api.retry_backoff_base_sec)
+        self.batch_retention_spin = QSpinBox()
+        self.batch_retention_spin.setRange(1, 100)
+        self.batch_retention_spin.setValue(self.ctx.settings.api.batch_size_retention)
+        self.batch_clustering_spin = QSpinBox()
+        self.batch_clustering_spin.setRange(1, 50)
+        self.batch_clustering_spin.setValue(self.ctx.settings.api.batch_size_clustering)
+        self.chk_message_batches = QCheckBox("大量非即時任務啟用 Message Batches API（可降低成本）")
+        self.chk_message_batches.setChecked(self.ctx.settings.api.enable_message_batches_api)
+        self.retention_threshold_spin = QSpinBox()
+        self.retention_threshold_spin.setRange(1, 5)
+        self.retention_threshold_spin.setValue(self.ctx.settings.api.retention_priority_threshold)
+        self.retention_concurrency_spin = QSpinBox()
+        self.retention_concurrency_spin.setRange(1, 10)
+        self.retention_concurrency_spin.setValue(self.ctx.settings.api.retention_max_concurrency)
+
+        api_form.addRow("逾時秒數：", self.timeout_spin)
+        api_form.addRow("重試次數：", self.retry_spin)
+        api_form.addRow("重試退避基數（秒）：", self.backoff_spin)
+        api_form.addRow("留用初判批次大小：", self.batch_retention_spin)
+        api_form.addRow("議題分群批次大小：", self.batch_clustering_spin)
+        api_form.addRow(self.chk_message_batches)
+        api_form.addRow("留用優先級門檻（星，達此星數才留用）：", self.retention_threshold_spin)
+        api_form.addRow("留用平行批次數：", self.retention_concurrency_spin)
+        btn_save_api = QPushButton("儲存 API 設定")
+        btn_save_api.clicked.connect(self._on_save_api_settings)
+        api_form.addRow(btn_save_api)
+        layout.addWidget(api_group)
+        layout.addStretch()
+        return w
+
+    def _on_save_key(self):
+        key = self.key_input.text().strip()
+        if not key:
+            QMessageBox.information(self, "提示", "請輸入 API Key")
+            return
+        try:
+            save_api_key(key)
+            self.key_display.setText(mask_api_key(key))
+            self.key_input.clear()
+            self.key_status_label.setText("API Key 已加密儲存")
+        except Exception as e:
+            QMessageBox.critical(self, "儲存失敗", str(e))
+
+    def _on_test_key(self):
+        self.key_status_label.setText("測試連線中...")
+        result = self.ctx.gateway.test_connection()
+        if result.get("ok"):
+            self.key_status_label.setText("✓ 連線成功")
+        else:
+            self.key_status_label.setText(f"✗ 連線失敗：{result.get('message')}")
+
+    def _on_clear_key(self):
+        confirm = QMessageBox.question(self, "確認清除", "確定要清除已儲存的 API Key 嗎？")
+        if confirm == QMessageBox.Yes:
+            clear_api_key()
+            self.key_display.setText(mask_api_key(None))
+            self.key_status_label.setText("API Key 已清除")
+
+    def _on_save_api_settings(self):
+        self.ctx.settings.api.request_timeout_sec = self.timeout_spin.value()
+        self.ctx.settings.api.max_retries = self.retry_spin.value()
+        self.ctx.settings.api.retry_backoff_base_sec = self.backoff_spin.value()
+        self.ctx.settings.api.batch_size_retention = self.batch_retention_spin.value()
+        self.ctx.settings.api.batch_size_clustering = self.batch_clustering_spin.value()
+        self.ctx.settings.api.enable_message_batches_api = self.chk_message_batches.isChecked()
+        self.ctx.settings.api.retention_priority_threshold = self.retention_threshold_spin.value()
+        self.ctx.settings.api.retention_max_concurrency = self.retention_concurrency_spin.value()
+        self.ctx.save_settings()
+        QMessageBox.information(self, "已儲存", "API 設定已儲存")
+
+    # ---------- 任務模型 ----------
+    def _build_model_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.addWidget(QLabel("各 AI 任務使用的模型（留用初判建議 Haiku，分群建議 Sonnet，綜整/立場/規則建議 Opus）"))
+
+        self.task_model_combos = {}
+        form = QFormLayout()
+        for m in self.ctx.settings.task_models:
+            combo = QComboBox()
+            combo.addItems(MODEL_CHOICES)
+            if m["model_id"] in MODEL_CHOICES:
+                combo.setCurrentText(m["model_id"])
+            self.task_model_combos[m["task"]] = combo
+            form.addRow(m["task"], combo)
+        layout.addLayout(form)
+
+        btn_save = QPushButton("儲存任務模型設定")
+        btn_save.clicked.connect(self._on_save_task_models)
+        layout.addWidget(btn_save)
+        layout.addStretch()
+        return w
+
+    def _on_save_task_models(self):
+        for m in self.ctx.settings.task_models:
+            combo = self.task_model_combos.get(m["task"])
+            if combo:
+                m["model_id"] = combo.currentText()
+        self.ctx.save_settings()
+        QMessageBox.information(self, "已儲存", "任務模型設定已儲存")
+
+    # ---------- Prompt 編輯器 ----------
+    def _build_prompt_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QHBoxLayout(w)
+
+        self.prompt_task_list = QListWidget()
+        for task in PROMPT_TASKS:
+            self.prompt_task_list.addItem(task)
+        self.prompt_task_list.currentTextChanged.connect(self._on_prompt_task_selected)
+        layout.addWidget(self.prompt_task_list, 1)
+
+        editor_box = QWidget()
+        editor_layout = QVBoxLayout(editor_box)
+        editor_layout.addWidget(QLabel("System Prompt："))
+        self.system_prompt_edit = QTextEdit()
+        editor_layout.addWidget(self.system_prompt_edit, 2)
+        editor_layout.addWidget(QLabel("User Template（可用 {變數} 佔位符）："))
+        self.user_template_edit = QTextEdit()
+        editor_layout.addWidget(self.user_template_edit, 2)
+
+        self.prompt_version_label = QLabel("")
+        editor_layout.addWidget(self.prompt_version_label)
+
+        btn_row = QHBoxLayout()
+        btn_save_prompt = QPushButton("儲存為新版本")
+        btn_save_prompt.clicked.connect(self._on_save_prompt)
+        btn_restore = QPushButton("還原預設")
+        btn_restore.clicked.connect(self._on_restore_prompt)
+        btn_row.addWidget(btn_save_prompt)
+        btn_row.addWidget(btn_restore)
+        editor_layout.addLayout(btn_row)
+
+        layout.addWidget(editor_box, 3)
+        return w
+
+    def _on_prompt_task_selected(self, task: str):
+        if not task:
+            return
+        from app.prompts.registry import get_active_prompt
+        cfg = get_active_prompt(self.ctx.prompt_repo, task)
+        self.system_prompt_edit.setPlainText(cfg.system_prompt)
+        self.user_template_edit.setPlainText(cfg.user_template)
+        self.prompt_version_label.setText(f"目前版本：v{cfg.version}　是否為預設：{cfg.is_default}")
+        self._current_prompt_task = task
+        self._current_prompt_cfg = cfg
+
+    def _on_save_prompt(self):
+        task = getattr(self, "_current_prompt_task", None)
+        if not task:
+            return
+        cfg = PromptConfig(
+            task=task, system_prompt=self.system_prompt_edit.toPlainText(),
+            user_template=self.user_template_edit.toPlainText(),
+            tool_schema_json=self._current_prompt_cfg.tool_schema_json,
+        )
+        new_cfg = self.ctx.prompt_repo.save_new_version(cfg)
+        self.prompt_version_label.setText(f"目前版本：v{new_cfg.version}（已儲存）")
+        QMessageBox.information(self, "已儲存", f"Prompt 已儲存為新版本 v{new_cfg.version}")
+
+    def _on_restore_prompt(self):
+        task = getattr(self, "_current_prompt_task", None)
+        if not task:
+            return
+        restored = self.ctx.prompt_repo.restore_default(task)
+        if restored:
+            self.system_prompt_edit.setPlainText(restored.system_prompt)
+            self.user_template_edit.setPlainText(restored.user_template)
+            self.prompt_version_label.setText(f"已還原預設，目前版本：v{restored.version}")
+
+    # ---------- 抓取設定 ----------
+    def _build_scraping_tab(self) -> QWidget:
+        w = QWidget()
+        form = QFormLayout(w)
+        s = self.ctx.settings.scraping
+        self.delay_spin = QDoubleSpinBox()
+        self.delay_spin.setRange(0.5, 30.0)
+        self.delay_spin.setValue(s.per_domain_delay_sec)
+        self.timeout_scrape_spin = QSpinBox()
+        self.timeout_scrape_spin.setRange(5, 120)
+        self.timeout_scrape_spin.setValue(s.request_timeout_sec)
+        self.ua_edit = QLineEdit(s.user_agent)
+        self.robots_chk = QCheckBox("遵守 robots.txt")
+        self.robots_chk.setChecked(s.respect_robots_txt)
+        self.ssl_chk = QCheckBox("驗證 SSL 憑證（公司代理/防火牆環境若大量 SSL 錯誤可暫時關閉，有安全風險）")
+        self.ssl_chk.setChecked(getattr(s, "verify_ssl", True))
+        self.browser_chk = QCheckBox("啟用瀏覽器渲染備援（Playwright + GNE；一般抓取無法取得主文時自動改用，"
+                                       "需先執行 pip install playwright gne 與 playwright install chromium）")
+        self.browser_chk.setChecked(getattr(s, "use_browser_rendering", False))
+        self.browser_timeout_spin = QSpinBox()
+        self.browser_timeout_spin.setRange(10, 180)
+        self.browser_timeout_spin.setValue(getattr(s, "browser_timeout_sec", 45))
+
+        form.addRow("每網域延遲秒數：", self.delay_spin)
+        form.addRow("請求逾時秒數：", self.timeout_scrape_spin)
+        form.addRow("User-Agent：", self.ua_edit)
+        form.addRow(self.robots_chk)
+        form.addRow(self.ssl_chk)
+        form.addRow(self.browser_chk)
+        form.addRow("瀏覽器渲染逾時秒數：", self.browser_timeout_spin)
+
+        btn_save = QPushButton("儲存抓取設定")
+        btn_save.clicked.connect(self._on_save_scraping)
+        form.addRow(btn_save)
+        return w
+
+    def _on_save_scraping(self):
+        s = self.ctx.settings.scraping
+        s.per_domain_delay_sec = self.delay_spin.value()
+        s.request_timeout_sec = self.timeout_scrape_spin.value()
+        s.user_agent = self.ua_edit.text()
+        s.respect_robots_txt = self.robots_chk.isChecked()
+        s.verify_ssl = self.ssl_chk.isChecked()
+        s.use_browser_rendering = self.browser_chk.isChecked()
+        s.browser_timeout_sec = self.browser_timeout_spin.value()
+        self.ctx.save_settings()
+        QMessageBox.information(self, "已儲存", "正文抓取設定已儲存")
+
+    # ---------- Word 樣式 ----------
+    def _build_word_tab(self) -> QWidget:
+        w = QWidget()
+        form = QFormLayout(w)
+        s = self.ctx.settings.word_export
+
+        self.logo_edit = QLineEdit(s.logo_path)
+        btn_logo = QPushButton("選擇 Logo...")
+        btn_logo.clicked.connect(self._on_pick_logo)
+        logo_row = QHBoxLayout()
+        logo_row.addWidget(self.logo_edit)
+        logo_row.addWidget(btn_logo)
+
+        self.header_edit = QLineEdit(s.header_text)
+        self.footer_edit = QLineEdit(s.footer_text)
+        self.date_format_edit = QLineEdit(s.date_format)
+        self.font_name_edit = QLineEdit(s.font_name)
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(8, 36)
+        self.font_size_spin.setValue(s.font_size_pt)
+        self.spacing_spin = QSpinBox()
+        self.spacing_spin.setRange(0, 60)
+        self.spacing_spin.setValue(s.paragraph_spacing_pt)
+
+        form.addRow("Logo：", logo_row)
+        form.addRow("頁首文字：", self.header_edit)
+        form.addRow("頁尾文字：", self.footer_edit)
+        form.addRow("日期格式（strftime）：", self.date_format_edit)
+        form.addRow("字型：", self.font_name_edit)
+        form.addRow("字級：", self.font_size_spin)
+        form.addRow("段落間距（pt）：", self.spacing_spin)
+
+        btn_save = QPushButton("儲存 Word 樣式設定")
+        btn_save.clicked.connect(self._on_save_word_settings)
+        form.addRow(btn_save)
+        return w
+
+    def _on_pick_logo(self):
+        path, _ = QFileDialog.getOpenFileName(self, "選擇 Logo 圖片", "", "圖片 (*.png *.jpg *.jpeg)")
+        if path:
+            self.logo_edit.setText(path)
+
+    def _on_save_word_settings(self):
+        s = self.ctx.settings.word_export
+        s.logo_path = self.logo_edit.text()
+        s.header_text = self.header_edit.text()
+        s.footer_text = self.footer_edit.text()
+        s.date_format = self.date_format_edit.text()
+        s.font_name = self.font_name_edit.text()
+        s.font_size_pt = self.font_size_spin.value()
+        s.paragraph_spacing_pt = self.spacing_spin.value()
+        self.ctx.save_settings()
+        QMessageBox.information(self, "已儲存", "Word 輸出樣式設定已儲存")
+
+    # ---------- Gmail 匯入 ----------
+    def _build_gmail_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        conn_group = QGroupBox("Gmail 帳號連接（OAuth，唯讀權限）")
+        conn_form = QFormLayout(conn_group)
+        self.gmail_client_id_edit = QLineEdit()
+        self.gmail_client_id_edit.setPlaceholderText("Google Cloud Console 建立的 OAuth Client ID")
+        self.gmail_client_secret_edit = QLineEdit()
+        self.gmail_client_secret_edit.setEchoMode(QLineEdit.Password)
+        self.gmail_client_secret_edit.setPlaceholderText("對應的 Client Secret")
+        conn_form.addRow("Client ID：", self.gmail_client_id_edit)
+        conn_form.addRow("Client Secret：", self.gmail_client_secret_edit)
+
+        self.gmail_status_label = QLabel(self._gmail_status_text())
+        conn_form.addRow("連接狀態：", self.gmail_status_label)
+
+        btn_row = QHBoxLayout()
+        self.btn_connect_gmail = QPushButton("連接 Gmail 帳號")
+        self.btn_connect_gmail.clicked.connect(self._on_connect_gmail)
+        btn_clear_gmail = QPushButton("清除授權")
+        btn_clear_gmail.clicked.connect(self._on_clear_gmail)
+        btn_row.addWidget(self.btn_connect_gmail)
+        btn_row.addWidget(btn_clear_gmail)
+        conn_form.addRow(btn_row)
+        layout.addWidget(conn_group)
+
+        filter_group = QGroupBox("匯入篩選設定")
+        filter_form = QFormLayout(filter_group)
+        g = self.ctx.settings.gmail
+        self.gmail_sender_edit = QLineEdit(g.sender_email_filter)
+        self.gmail_sender_edit.setPlaceholderText("例：xkm_cs@xkd.com.tw")
+        self.gmail_subject_edit = QLineEdit(g.subject_keyword)
+        self.gmail_subject_edit.setPlaceholderText("選填，例：內政部新聞專屬監測報告")
+
+        filter_form.addRow("寄件者信箱：", self.gmail_sender_edit)
+        filter_form.addRow("主旨關鍵字：", self.gmail_subject_edit)
+        filter_form.addRow(QLabel("擷取的起訖日期時間每次匯入時另外於對話框指定，不在此設定"))
+
+        btn_save_gmail = QPushButton("儲存 Gmail 設定")
+        btn_save_gmail.clicked.connect(self._on_save_gmail_settings)
+        filter_form.addRow(btn_save_gmail)
+        layout.addWidget(filter_group)
+        layout.addStretch()
+        return w
+
+    def _gmail_status_text(self) -> str:
+        return "✓ 已連接" if load_gmail_credentials() else "未連接"
+
+    def _on_connect_gmail(self):
+        client_id = self.gmail_client_id_edit.text().strip()
+        client_secret = self.gmail_client_secret_edit.text().strip()
+        if not client_id or not client_secret:
+            QMessageBox.information(self, "提示", "請先輸入 Client ID 與 Client Secret")
+            return
+        self.btn_connect_gmail.setEnabled(False)
+        self.gmail_status_label.setText("授權中...（請在瀏覽器完成同意畫面）")
+        self._gmail_auth_worker = GmailAuthWorker(client_id, client_secret)
+        self._gmail_auth_worker.finished_ok.connect(self._on_gmail_connected)
+        self._gmail_auth_worker.finished_error.connect(self._on_gmail_connect_error)
+        self._gmail_auth_worker.start()
+
+    def _on_gmail_connected(self):
+        self.btn_connect_gmail.setEnabled(True)
+        self.gmail_status_label.setText(self._gmail_status_text())
+        self.gmail_client_secret_edit.clear()
+        QMessageBox.information(self, "已連接", "Gmail 帳號授權成功")
+
+    def _on_gmail_connect_error(self, message: str):
+        self.btn_connect_gmail.setEnabled(True)
+        self.gmail_status_label.setText(f"✗ 連接失敗：{message}")
+
+    def _on_clear_gmail(self):
+        confirm = QMessageBox.question(self, "確認清除", "確定要清除已儲存的 Gmail 授權嗎？")
+        if confirm == QMessageBox.Yes:
+            clear_gmail_credentials()
+            self.gmail_status_label.setText(self._gmail_status_text())
+
+    def _on_save_gmail_settings(self):
+        g = self.ctx.settings.gmail
+        g.sender_email_filter = self.gmail_sender_edit.text().strip()
+        g.subject_keyword = self.gmail_subject_edit.text().strip()
+        self.ctx.save_settings()
+        QMessageBox.information(self, "已儲存", "Gmail 設定已儲存")
