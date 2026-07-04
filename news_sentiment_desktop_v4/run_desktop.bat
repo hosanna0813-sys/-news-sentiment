@@ -4,7 +4,13 @@ cd /d "%~dp0"
 
 if not exist ".venv" (
     echo [First run] Creating virtual environment...
-    python -m venv .venv
+    python -m venv .venv 2>nul
+    if not exist ".venv\Scripts\python.exe" py -3 -m venv .venv
+    if not exist ".venv\Scripts\python.exe" (
+        echo [Error] Python not found. Install Python 3.10+ or add it to PATH.
+        pause
+        exit /b 1
+    )
 )
 
 call .venv\Scripts\activate.bat
