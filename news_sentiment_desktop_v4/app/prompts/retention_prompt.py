@@ -108,14 +108,18 @@ even if the incident itself seems minor or routine (e.g. a small fire at a
 police dormitory, an injury inside a national park). MOI is directly
 responsible for these places regardless of scale.
 
-(2) Agency-led enforcement action or case outcome: the news reports an
-enforcement action, bust, seizure, or case resolution led by an MOI agency
-and framed as an agency achievement — e.g. police cracking a large
-ticket-scalping ring, intercepting counterfeit goods, breaking up a fraud
-ring, immigration enforcement operations. Do not under-score these just
-because the underlying crime itself (scalping, counterfeiting) seems
+(2) SIGNIFICANT agency-led enforcement action or case outcome: the news
+reports an enforcement action, bust, seizure, or case resolution led by an
+MOI agency, framed as an agency achievement, AND of meaningful scale —
+e.g. police cracking a large ticket-scalping ring, a major smuggling
+seizure, breaking up a fraud ring, cross-jurisdiction or nationally
+newsworthy immigration enforcement operations. Do not under-score these
+just because the underlying crime itself (scalping, counterfeiting) seems
 low-stakes — the news value here is the agency's own enforcement record,
-which reporters and the Minister's office track.
+which reporters and the Minister's office track. However, SCALE IS
+REQUIRED: a single DUI stop, one driver fleeing a checkpoint, an ordinary
+arrest of one suspect, or a small local bust is routine police work, NOT a
+flag-worthy enforcement achievement.
 
 (3) MOI-agency-funded or MOI-agency-led infrastructure/construction project:
 a construction, renovation, or urban-renewal project funded via or driven
@@ -131,6 +135,14 @@ traffic accident that police merely responded to in the ordinary course of
 duty is NOT enough — that is Principle 1's "routine incident" exclusion,
 not a core-business flag). The flag is about direct institutional ownership
 or credit, not mere police/agency presence at the scene.
+
+Concretely, the following are ROUTINE and must NOT trigger the flag, even
+though an MOI agency (police, fire, coast guard, immigration) appears in
+the story: a single DUI/checkpoint-evasion arrest, an individual traffic
+violation or accident response, a one-off rescue of a stranded boat,
+hiker, or vehicle, a routine training exercise or drill, and small
+single-suspect local cases. These score on the numeric ladder only —
+if the ladder says they are low priority, let them go.
 
 ==================================================
 PRINCIPLE 3
@@ -290,10 +302,12 @@ TOOL_SCHEMA = {
                         "type": "boolean",
                         "description": (
                             "是否為內政部所屬機關（警政署、消防署、移民署、國家公園署、地政/國土管理"
-                            "機關、兵役替代役、戶政、民政等）自身業務範圍內的事件：包括①事件發生在/"
-                            "直接涉及該機關管理之場所或單位、②該機關主導查緝／執法且屬於機關績效成果"
-                            "的案件（例如大型查獲、攔截、破獲行動）、③該機關出資或主導的建設/更新工程。"
-                            "只要符合其中一項就填 true，不受該則新聞其餘分數高低影響。"
+                            "機關、兵役替代役、戶政、民政等）自身業務範圍內的【重大】事件：包括①事件發生在/"
+                            "直接涉及該機關管理之場所或單位、②該機關主導之【具規模】查緝／執法成果"
+                            "（大型查獲、跨區破獲行動等足以登上全國版面者）、③該機關出資或主導的建設/更新工程。"
+                            "【日常個案不算】：單一酒駕/拒檢取締、個別違規或事故處理、單次擱淺/山難救援、"
+                            "例行訓練演習、單一嫌犯的地方小案——即使警消海巡移民有出現也填 false，"
+                            "僅依評分階梯判斷。符合重大條件之一才填 true，不受其餘分數高低影響。"
                         ),
                     },
                 },
