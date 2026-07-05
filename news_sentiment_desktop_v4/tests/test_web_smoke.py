@@ -631,3 +631,20 @@ def test_pipeline_survives_concurrent_page_requests(logged_in_client, web_app, m
     assert status["status"] == "completed"
     assert len(ctx.news_repo.list_all()) == 5
     assert any(t.topic_name == "議題X" for t in ctx.topic_repo.list_active())
+
+
+def test_parse_taipei_datetime_is_independent_of_server_timezone():
+    """迴歸測試：桌面版跑在使用者自己的電腦上，naive datetime 當地時間剛好就是
+    台灣時間；網頁版伺服器（Render）預設多半是 UTC，同一個 datetime-local 字串
+    如果不明確標記時區，會被Server的系統時區解讀，跟使用者實際想要的台灣時間
+    差 8 小時，導致 Gmail 搜尋區間整個偏移、篩不到信件（這是實際發生過的 bug）。
+    parse_taipei_datetime() 必須回傳「不管執行環境系統時區是什麼」都對應同一個
+    絕對時間點的結果。
+    """
+    from datetime import datetime, timezone
+    from app.web.routes.import_gmail import parse_taipei_datetime
+
+    dt = parse_taipei_datetime("2026-07-05T07:17:00")
+    # 2026-07-05 07:17 台灣時間（UTC+8）= 2026-07-04 23:17 UTC
+    expected_utc = datetime(2026, 7, 4, 23, 17, 0, tzinfo=timezone.utc)
+    assert dt.timestamp() == expected_utc.timestamp()

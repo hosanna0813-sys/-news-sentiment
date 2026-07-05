@@ -20,7 +20,6 @@ thread-local 連線），settings／gateway 是純記憶體物件、沒有連線
 """
 from __future__ import annotations
 
-import datetime
 import json
 import threading
 import time
@@ -29,6 +28,7 @@ from flask import Blueprint, flash, redirect, request, url_for
 
 from app.web.server import get_context
 from app.web.job_runner import run_batch_job_sync
+from app.web.routes.import_gmail import parse_taipei_datetime
 from app.web.routes.retention import build_retention_job_inputs
 from app.web.routes.clustering import build_clustering_job_inputs
 from app.web.routes.scraping import build_scraping_job_inputs
@@ -71,8 +71,8 @@ def _set_stage(job_repo, job_id, stage_index, label, **extra_fields):
 def run():
     ctx = get_context()
     try:
-        start_dt = datetime.datetime.fromisoformat(request.form["start_dt"])
-        end_dt = datetime.datetime.fromisoformat(request.form["end_dt"])
+        start_dt = parse_taipei_datetime(request.form["start_dt"])
+        end_dt = parse_taipei_datetime(request.form["end_dt"])
     except (KeyError, ValueError):
         flash("請填寫正確的起訖時間", "error")
         return redirect(url_for("dashboard.index"))
