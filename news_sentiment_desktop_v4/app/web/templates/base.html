@@ -64,7 +64,10 @@ function pollJob(jobId, onDone) {
       }
       if (data.status === "failed") {
         // 停止輪詢但不重新整理頁面，讓失敗訊息（例如匯入失敗的原因）留在畫面上，
-        // 不要一秒後又被整頁重載蓋掉。
+        // 不要一秒後又被整頁重載蓋掉；失敗狀態改成醒目的紅色警示樣式，避免
+        // 訊息平淡地混在一般進度文字裡被忽略、誤以為只是卡住。
+        if (label) label.classList.add("progress-failed");
+        if (bar) bar.classList.add("progress-failed");
         return;
       }
       if (data.status === "completed" || data.status === "cancelled") {
