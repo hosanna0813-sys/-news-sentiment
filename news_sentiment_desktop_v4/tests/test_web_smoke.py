@@ -165,17 +165,18 @@ def test_retention_override_persists(logged_in_client, web_app):
     assert item.retention_judged_by == "human"
 
 
-def test_retention_page_shows_body_preview_and_checkbox_first_column(logged_in_client, web_app):
+def test_retention_page_shows_collapsed_full_body_and_checkbox_first_column(logged_in_client, web_app):
     ctx = web_app.config["APP_CONTEXT"]
-    ctx.news_repo.upsert_one(NewsItem(
-        row_id="r1", title="新聞一", source="來源A", body_text="這是完整正文內容。" * 20,
-    ))
+    full_body = "這是完整正文內容。" * 20
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A", body_text=full_body))
     ctx.news_repo.upsert_one(NewsItem(row_id="r2", title="新聞二", source="來源B", body_text=""))
 
     resp = logged_in_client.get("/retention")
     assert resp.status_code == 200
     html = resp.data.decode("utf-8")
-    assert "body-preview" in html
+    # 正文放在每則新聞下方的 <details>（預設收合），且是完整全文，不截斷
+    assert "<details>" in html
+    assert full_body in html
     assert "尚無正文" in html
     # 留用 checkbox 欄位要在標題欄位「之前」出現（最左欄）
     assert html.index('name="retained"') < html.index("新聞一")
