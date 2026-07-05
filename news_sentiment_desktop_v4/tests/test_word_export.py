@@ -88,8 +88,8 @@ def test_simple_topic_list_export(tmp_path):
     doc = Document(result)
     texts = [p.text for p in doc.paragraphs]
     full_text = "\n".join(texts)
-    assert "1. 議題一：政策爭議" in texts        # 議題有編號
-    assert "2. 議題二：治安事件" in texts        # 空議題不佔編號
+    assert "議題1. 議題一：政策爭議" in texts     # 議題有「議題N.」編號
+    assert "議題2. 議題二：治安事件" in texts     # 空議題不佔編號
     assert "中央社-新聞甲" in texts              # 來源-標題 前綴
     assert "自由-新聞丙" in texts
     assert "新聞乙（無來源無連結）" in texts     # 無來源時只印標題
