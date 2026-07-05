@@ -212,7 +212,8 @@ pytest tests -v
 ### 本機測試網頁版
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-web.txt   # 只測網頁版用這個較輕量的清單即可
+                                        # （已裝過桌面版 requirements.txt 也可以，是超集）
 export WEB_SHARED_PASSWORD=your-password
 export FLASK_SECRET_KEY=any-random-string
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -231,9 +232,13 @@ python run_web.py
    Authorized redirect URI 填：`https://<你的 Render 服務網址>/gmail/oauth/callback`
    （服務網址要等下一步 Render 建立服務後才知道，可以先用預留網址建立、之後
    到 Google Cloud Console 補上正確網址）。
-2. **Render**：用本專案根目錄的 `render.yaml`（Blueprint）建立服務
-   （New → Blueprint，指向這個 GitHub repo）。Render 會自動讀取
-   `render.yaml`，建立一個掛了 1GB 持久磁碟（`/var/data`）的 web service。
+2. **Render**：用 `render.yaml`（Blueprint）建立服務（New → Blueprint，指向
+   這個 GitHub repo）。注意 `render.yaml` 放在 `news_sentiment_desktop_v4/`
+   子目錄下（repo 根目錄只有這個資料夾），render.yaml 內已設定
+   `rootDir: news_sentiment_desktop_v4`，build/start 指令都會在該子目錄下
+   執行；若 Render 介面要求指定 render.yaml 路徑，選
+   `news_sentiment_desktop_v4/render.yaml`。Render 會建立一個掛了 1GB
+   持久磁碟（`/var/data`）的 web service。
 3. 在 Render Dashboard 的環境變數頁面填入（`render.yaml` 裡標示
    `sync: false` 的都需要手動填）：
    - `ANTHROPIC_API_KEY`
@@ -249,8 +254,23 @@ python run_web.py
 - 只支援單一 instance（`-w 1`）：SQLite 檔案鎖 + 單一持久磁碟不支援水平擴展，
   小團隊內部工具用途足夠。
 - 不做 Playwright 瀏覽器渲染抓取（雲端 instance 較輕量），只做
-  `requests + BeautifulSoup` 一段式抓取。
+  `requests + BeautifulSoup` 一段式抓取——這也是為什麼部署用
+  `requirements-web.txt`（不含 PySide6/Playwright/GNE/PyInstaller）而不是
+  桌面版的完整 `requirements.txt`：Render 的無頭建置環境沒有這些套件需要的
+  GUI/瀏覽器系統函式庫，硬裝只會讓 build 失敗。
 - 只有一組共用密碼，沒有個別帳號與操作紀錄歸屬。
+
+### Build 失敗排查
+
+- **`Exited with status 1 while building your code`**：先看 Render 的 build log
+  是哪個套件裝到一半失敗（通常是誤用了完整的 `requirements.txt`，或
+  `render.yaml` 沒有生效導致用了預設的 build 指令）。確認 Render 服務設定裡
+  的 Build Command 是 `pip install -r requirements-web.txt`（不是
+  `requirements.txt`），且 Root Directory／`rootDir` 有指到
+  `news_sentiment_desktop_v4`。若是舊的 Blueprint（在 `rootDir` 加入前建立
+  的），到 Render Dashboard 手動把 Root Directory 改成
+  `news_sentiment_desktop_v4`，或刪掉服務用最新的 `render.yaml` 重新建立
+  Blueprint。
 
 ---
 
