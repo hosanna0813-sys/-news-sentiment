@@ -118,7 +118,7 @@
         </div>
         {% endfor %}
       </div>
-      {% if not topics %}<p class="muted">尚無議題，請先執行 AI 議題分群，或用「⋮」選單手動建立。</p>{% endif %}
+      {% if not topics %}<p class="muted" id="no-topics-hint">尚無議題，請先執行 AI 議題分群，或用「⋮」選單手動建立。</p>{% endif %}
     </div>
 
     <div class="workspace-col preview-col">
@@ -317,14 +317,46 @@ function showPreview(rowId) {
 function createTopic() {
   const name = prompt("新議題名稱：");
   if (!name) return;
-  const form = document.createElement("form");
-  form.method = "post";
-  form.action = "{{ url_for('clustering.create_topic') }}";
-  const input = document.createElement("input");
-  input.type = "hidden"; input.name = "name"; input.value = name;
-  form.appendChild(input);
-  document.body.appendChild(form);
-  form.submit();
+  fetch("{{ url_for('clustering.create_topic') }}", {
+    method: "POST",
+    headers: {"X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded"},
+    body: new URLSearchParams({name: name}),
+  }).then(r => {
+    if (!r.ok) throw new Error("create_topic failed");
+    return r.json();
+  }).then(data => addTopicToUI(data.topic_id, data.topic_name))
+    .catch(() => alert("建立議題失敗，請重新整理頁面再試一次"));
+}
+
+function addTopicToUI(topicId, topicName) {
+  // 新增議題不整頁重新導向重繪（見 create_topic() 後端註解），這裡把新議題
+  // 插進下拉選單與議題成員區的 DOM，再切換過去——保留使用者原本的分頁/搜尋/
+  // 捲動狀態，也讓新建的議題立刻可見可用，而不是像之前那樣跳回一開始選中的
+  // 第一個議題。
+  const noTopicsHint = document.getElementById("no-topics-hint");
+  if (noTopicsHint) noTopicsHint.remove();
+
+  const select = document.getElementById("topic-select");
+  const opt = document.createElement("option");
+  opt.value = topicId;
+  opt.dataset.topicName = topicName;
+  opt.textContent = `${topicName}（0）`;
+  select.appendChild(opt);
+
+  const zone = document.createElement("div");
+  zone.className = "drop-zone topic-members";
+  zone.id = "topic-members-" + topicId;
+  zone.dataset.topicId = topicId;
+  zone.style.display = "none";
+  zone.ondragover = allowDrop;
+  zone.ondrop = (event) => handleDrop(event, topicId);
+  const hint = document.createElement("div");
+  hint.className = "drop-hint";
+  hint.textContent = "拖曳新聞卡片到這裡加入此議題";
+  zone.appendChild(hint);
+  document.getElementById("topic-zones").appendChild(zone);
+
+  selectTopic(topicId);
 }
 
 // 預設選第一個議題（若有）

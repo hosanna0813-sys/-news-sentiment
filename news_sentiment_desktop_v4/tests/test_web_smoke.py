@@ -290,6 +290,23 @@ def test_clustering_create_topic(logged_in_client, web_app):
     assert any(t.topic_name == "手動建立的議題" for t in topics)
 
 
+def test_clustering_create_topic_via_fetch_returns_json_without_redirect(logged_in_client, web_app):
+    """新增議題用背景 fetch 送出（見 clustering.html createTopic()），不應該整頁
+    重新導向——不然使用者剛選好的分頁/搜尋/捲動位置都會被打斷，感覺像跳回初始畫面。"""
+    ctx = web_app.config["APP_CONTEXT"]
+    resp = logged_in_client.post(
+        "/clustering/create_topic", data={"name": "新議題測試"},
+        headers={"X-Requested-With": "fetch"},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["topic_name"] == "新議題測試"
+    assert data["topic_id"]
+    topics = ctx.topic_repo.list_active()
+    created = next(t for t in topics if t.topic_name == "新議題測試")
+    assert created.topic_id == data["topic_id"]
+
+
 def test_clustering_page_board_layout_and_preview_data(logged_in_client, web_app):
     ctx = web_app.config["APP_CONTEXT"]
     ctx.topic_repo.upsert_one(Topic(topic_id="t1", topic_name="議題A"))

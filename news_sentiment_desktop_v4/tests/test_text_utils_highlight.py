@@ -5,7 +5,9 @@
 """
 from __future__ import annotations
 
-from app.utils.text_utils import extract_keywords_from_taxonomy, highlight_keywords
+from app.utils.text_utils import (
+    extract_keywords_from_taxonomy, highlight_keywords, clean_body_for_preview,
+)
 
 
 def test_extract_keywords_splits_topic_column_and_boolean_syntax():
@@ -73,3 +75,49 @@ def test_highlight_keywords_no_keywords_still_escapes_and_returns_full_text():
 
 def test_highlight_keywords_empty_text_returns_empty_string():
     assert highlight_keywords("", ["內政部"]) == ""
+
+
+# ---------- clean_body_for_preview() ----------
+# 來源網頁常見同一段文字被拆成好幾行（CMS 編輯器換行、或每個 <p> 對應一句話
+# 而非一個完整段落），normalize_whitespace() 只收斂 3 個以上的換行、刻意保留
+# 單一換行；但預覽區塊 CSS 是 white-space: pre-wrap，會把每個換行都畫成一次
+# 真正換行，讓文字看起來被切成一截一截。clean_body_for_preview() 只在「畫面
+# 顯示」這層把段落內部零星的單一換行攤平成空白，保留真正的段落分隔。
+
+def test_clean_body_for_preview_flattens_single_embedded_newlines():
+    text = "第一句話。\n第二句話，本來跟第一句同一段。\n第三句話。"
+    result = clean_body_for_preview(text)
+    assert result == "第一句話。 第二句話，本來跟第一句同一段。 第三句話。"
+
+
+def test_clean_body_for_preview_preserves_real_paragraph_breaks():
+    text = "第一段第一句。\n第一段第二句。\n\n第二段第一句。\n第二段第二句。"
+    result = clean_body_for_preview(text)
+    assert result == "第一段第一句。 第一段第二句。\n\n第二段第一句。 第二段第二句。"
+
+
+def test_clean_body_for_preview_collapses_excessive_blank_lines_between_paragraphs():
+    text = "第一段。\n\n\n\n\n第二段。"
+    result = clean_body_for_preview(text)
+    assert result == "第一段。\n\n第二段。"
+
+
+def test_clean_body_for_preview_does_not_drop_any_words():
+    """只重排空白/換行，不能遺漏任何實際內容"""
+    text = "內政部長\n劉世芳\n出席記者會，\n說明治安政策。"
+    result = clean_body_for_preview(text)
+    for word in ["內政部長", "劉世芳", "出席記者會", "說明治安政策"]:
+        assert word in result
+
+
+def test_clean_body_for_preview_empty_text():
+    assert clean_body_for_preview("") == ""
+    assert clean_body_for_preview(None) is None
+
+
+def test_highlight_keywords_after_cleaning_shows_continuous_prose_with_bold_match():
+    raw = "第一句與案情無關。\n內政部長劉世芳出席記者會。\n第三句補充說明。"
+    cleaned = clean_body_for_preview(raw)
+    result = highlight_keywords(cleaned, ["內政部長"])
+    assert "\n" not in result
+    assert "<strong>內政部長</strong>" in result

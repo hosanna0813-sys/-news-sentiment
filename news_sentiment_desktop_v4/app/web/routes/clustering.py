@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 
-from flask import Blueprint, redirect, render_template, request, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from app.web.server import get_context
 from app.web.job_runner import start_batch_job, BatchOutcome
@@ -28,7 +28,9 @@ from app.services.clustering.clustering_service import (
 )
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
-from app.utils.text_utils import new_id, extract_keywords_from_taxonomy, highlight_keywords
+from app.utils.text_utils import (
+    new_id, extract_keywords_from_taxonomy, highlight_keywords, clean_body_for_preview,
+)
 
 clustering_bp = Blueprint("clustering", __name__)
 
@@ -40,9 +42,11 @@ def _preview_payload(it, keywords):
     return {
         "title": it.title, "source": it.source, "published_at": it.published_at,
         "url": it.url, "body_text": it.body_text,
-        # 正文預覽維持完整原文、不截斷，只把設定頁「議題／關鍵字彙整表」裡出現過
-        # 的詞加粗提示——純視覺輔助，不影響 AI 判斷邏輯。
-        "body_html": highlight_keywords(it.body_text, keywords) if it.body_text else "",
+        # 正文預覽維持完整原文、不截斷，只是把來源網頁常見的零星換行攤平成連續
+        # 文字（避免看起來被切成一截一截），並把設定頁「議題／關鍵字彙整表」裡
+        # 出現過的詞加粗提示——純視覺輔助，不影響 AI 判斷邏輯。
+        "body_html": highlight_keywords(clean_body_for_preview(it.body_text), keywords)
+        if it.body_text else "",
     }
 
 
@@ -287,6 +291,11 @@ def create_topic():
     name = request.form.get("name", "").strip() or "新議題"
     topic = Topic(topic_id=new_id("ftopic_"), topic_name=name)
     ctx.topic_repo.upsert_one(topic)
+    # 新增議題用背景 fetch 送出（見 clustering.html createTopic()），成功後前端
+    # 直接把新議題插進下拉選單/議題成員區並切換過去，不整頁重新導向重繪——不然
+    # 使用者剛選好的分頁、搜尋關鍵字、捲動位置都會被打斷，感覺像「跳回初始畫面」。
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify({"topic_id": topic.topic_id, "topic_name": topic.topic_name})
     return redirect(url_for("clustering.index"))
 
 

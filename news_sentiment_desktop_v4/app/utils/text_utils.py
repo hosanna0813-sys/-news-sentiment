@@ -22,6 +22,29 @@ def normalize_whitespace(text: str) -> str:
     return text.strip()
 
 
+def clean_body_for_preview(text: str) -> str:
+    """新聞正文「畫面預覽」用的顯示層清理，不改動資料庫裡儲存的原始 body_text，
+    也不影響送進 AI 判斷的內容或 Word 匯出。
+
+    來源網頁常見同一段文字被拆成好幾行（例如 CMS 編輯器裡按 Enter 換行、或
+    每個 <p> 對應一句話而非一個完整段落），這些單一換行被 normalize_whitespace()
+    刻意保留（它只把 3 個以上的換行收斂成 2 個，視為段落間距），但預覽區塊的
+    CSS 是 white-space: pre-wrap，會把「每一個」換行都畫成一次真正換行，讓文字
+    看起來被切成一截一截。這裡把「原文中的段落分隔」（連續 2 個以上換行）保留
+    下來，段落內部零星的單一換行則攤平成空白，讓同一段文字連續顯示。"""
+    if not text:
+        return text
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    paragraphs = re.split(r"\n{2,}", normalized)
+    cleaned = []
+    for para in paragraphs:
+        flat = re.sub(r"\s*\n\s*", " ", para)
+        flat = re.sub(r"[ \t　]+", " ", flat).strip()
+        if flat:
+            cleaned.append(flat)
+    return "\n\n".join(cleaned)
+
+
 def safe_json_loads(text: str) -> Optional[Any]:
     """嚴格 JSON 解析 + 容錯：去除 ```json fences、前後雜訊文字"""
     if not text:

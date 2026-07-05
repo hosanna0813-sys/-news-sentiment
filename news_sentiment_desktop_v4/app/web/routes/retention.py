@@ -21,7 +21,7 @@ from app.services.retention.retention_service import prefilter_batch, judge_batc
     apply_human_retention_override, build_human_examples, _FALLBACK_JUDGEMENT
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
-from app.utils.text_utils import extract_keywords_from_taxonomy, highlight_keywords
+from app.utils.text_utils import extract_keywords_from_taxonomy, highlight_keywords, clean_body_for_preview
 
 retention_bp = Blueprint("retention", __name__)
 
@@ -140,11 +140,13 @@ def index():
         if running:
             job_id = running[0].job_id
 
-    # 正文預覽維持完整原文、不截斷，只把設定頁「議題／關鍵字彙整表」裡出現過的
-    # 詞加粗提示——純視覺輔助，不影響 AI 判斷邏輯（那邊仍是整段原文交給模型）。
+    # 正文預覽維持完整原文、不截斷，只是把來源網頁常見的零星換行攤平成連續文字
+    # （clean_body_for_preview，避免看起來被切成一截一截），並把設定頁「議題／
+    # 關鍵字彙整表」裡出現過的詞加粗提示——純視覺輔助，不影響 AI 判斷邏輯
+    # （那邊仍是整段原文交給模型）。
     keywords = extract_keywords_from_taxonomy(ctx.settings.keyword_taxonomy)
     body_html_by_row_id = {
-        it.row_id: highlight_keywords(it.body_text, keywords)
+        it.row_id: highlight_keywords(clean_body_for_preview(it.body_text), keywords)
         for it in items if it.body_text
     }
     return render_template("retention.html", items=items, job_id=job_id,
