@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}登入 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>新聞輿情彙整</h1>
+  <p>請輸入共用密碼登入</p>
+  {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="password" name="password" placeholder="共用密碼" autofocus required>
+    <button type="submit">登入</button>
+  </form>
+</div>
+{% endblock %}

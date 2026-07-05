@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}設定 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<h1>設定</h1>
+
+<h2>Anthropic API</h2>
+<p>
+  {% if api_key_configured %}
+    狀態：<span class="badge badge-ok">已設定</span>（{{ api_key_masked }}）
+  {% else %}
+    狀態：<span class="badge badge-warn">尚未設定</span> — 請在部署平台（Render）的環境變數中設定 <code>ANTHROPIC_API_KEY</code>。
+  {% endif %}
+</p>
+
+<h2>Gmail 新聞來源</h2>
+<p>
+  OAuth Client：
+  {% if oauth_client_configured %}
+    <span class="badge badge-ok">已設定</span>
+  {% else %}
+    <span class="badge badge-warn">尚未設定</span> — 請設定 <code>GMAIL_OAUTH_CLIENT_ID</code> / <code>GMAIL_OAUTH_CLIENT_SECRET</code> 環境變數。
+  {% endif %}
+</p>
+<p>
+  連接狀態：
+  {% if gmail_connected %}
+    <span class="badge badge-ok">已連接</span>
+  {% else %}
+    <span class="badge badge-warn">尚未連接</span>
+  {% endif %}
+  {% if oauth_client_configured %}
+    <a href="{{ url_for('settings.gmail_oauth_start') }}" class="btn">{{ '重新連接' if gmail_connected else '連接 Gmail' }}</a>
+  {% endif %}
+</p>
+
+<form method="post">
+  <label>寄件者信箱篩選<br>
+    <input type="text" name="sender_email_filter" value="{{ gmail.sender_email_filter }}" placeholder="例：xkm_cs@xkd.com.tw">
+  </label>
+  <label>主旨關鍵字（選填）<br>
+    <input type="text" name="subject_keyword" value="{{ gmail.subject_keyword }}" placeholder="例：新聞監測報告">
+  </label>
+  <button type="submit">儲存設定</button>
+</form>
+{% endblock %}

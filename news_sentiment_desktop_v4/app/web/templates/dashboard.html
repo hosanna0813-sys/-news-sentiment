@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}首頁 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<h1>今日進度</h1>
+<div class="stat-cards">
+  <div class="stat-card"><div class="stat-num">{{ total }}</div><div class="stat-label">已匯入新聞</div></div>
+  <div class="stat-card"><div class="stat-num">{{ retained }}</div><div class="stat-label">留用</div></div>
+  <div class="stat-card"><div class="stat-num">{{ with_body }}</div><div class="stat-label">已取得正文</div></div>
+  <div class="stat-card"><div class="stat-num">{{ clustered }}</div><div class="stat-label">已分群</div></div>
+  <div class="stat-card"><div class="stat-num">{{ topic_count }}</div><div class="stat-label">議題數</div></div>
+</div>
+
+<h2>操作流程</h2>
+<ol class="flow-steps">
+  <li><a href="{{ url_for('import_gmail.index') }}">從 Gmail 匯入今日新聞信件</a></li>
+  <li><a href="{{ url_for('scraping.index') }}">抓取留用新聞正文</a></li>
+  <li><a href="{{ url_for('retention.index') }}">執行 AI 留用初判並人工覆核</a></li>
+  <li><a href="{{ url_for('clustering.index') }}">執行 AI 議題分群並人工調整</a></li>
+  <li><a href="{{ url_for('export.index') }}">產生並下載 Word 新聞議題清單</a></li>
+</ol>
+{% endblock %}

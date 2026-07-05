@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}議題分群 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<h1>4. 議題分群與人工調整</h1>
+
+{% if job_id %}
+  <div class="progress-wrap">
+    <div class="progress-bar"><div id="job-progress" class="progress-bar-fill"></div></div>
+    <p id="job-progress-label">處理中...</p>
+  </div>
+  <script>pollJob("{{ job_id }}");</script>
+{% else %}
+  <form method="post" action="{{ url_for('clustering.run') }}">
+    <label><input type="checkbox" name="incremental" checked> 增量分群（只處理尚未歸入議題的新聞，維持既有議題結構）</label>
+    <button type="submit">執行 AI 議題分群</button>
+  </form>
+{% endif %}
+
+{% macro move_form(row_id) %}
+<form method="post" action="{{ url_for('clustering.move') }}" class="inline-form move-form">
+  <input type="hidden" name="row_id" value="{{ row_id }}">
+  <select name="target" onchange="this.nextElementSibling.style.display = (this.value==='__new__') ? 'inline-block' : 'none'">
+    <option value="__unassign__">— 標記不納入 —</option>
+    <option value="__new__">➕ 新議題...</option>
+    {% for t in topics %}
+      <option value="{{ t.topic_id }}">{{ t.topic_name }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="new_topic_name" placeholder="新議題名稱" style="display:none">
+  <button type="submit">移動</button>
+</form>
+{% endmacro %}
+
+<h2>未分類新聞（{{ unclustered|length }} 則）</h2>
+<table class="data-table">
+  <tbody>
+    {% for it in unclustered %}
+    <tr>
+      <td>{{ it.title }}（{{ it.source }}）</td>
+      <td>{{ move_form(it.row_id) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>議題（{{ topics|length }} 個）</h2>
+{% for t in topics %}
+<div class="topic-card">
+  <div class="topic-header">
+    <form method="post" action="{{ url_for('clustering.rename') }}" class="inline-form">
+      <input type="hidden" name="topic_id" value="{{ t.topic_id }}">
+      <input type="text" name="new_name" value="{{ t.topic_name }}">
+      <button type="submit">改名</button>
+    </form>
+    <form method="post" action="{{ url_for('clustering.merge') }}" class="inline-form">
+      <input type="hidden" name="source_topic_id" value="{{ t.topic_id }}">
+      合併到：
+      <select name="target_topic_id">
+        {% for other in topics if other.topic_id != t.topic_id %}
+          <option value="{{ other.topic_id }}">{{ other.topic_name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">合併</button>
+    </form>
+    <form method="post" action="{{ url_for('clustering.delete') }}" class="inline-form">
+      <input type="hidden" name="topic_id" value="{{ t.topic_id }}">
+      <button type="submit" {{ 'disabled' if news_by_topic.get(t.topic_id) }}>刪除空議題</button>
+    </form>
+  </div>
+  <table class="data-table">
+    <tbody>
+      {% for it in news_by_topic.get(t.topic_id, []) %}
+      <tr>
+        <td>{{ it.title }}（{{ it.source }}）</td>
+        <td>{{ move_form(it.row_id) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+{% endblock %}

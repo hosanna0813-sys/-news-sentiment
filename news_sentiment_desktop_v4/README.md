@@ -186,6 +186,74 @@ pytest tests -v
 
 ---
 
+## 7a. 網頁版（部署到 Render）
+
+除了 PySide6 桌面版，本專案另外提供一個**網頁版**（`app/web/`），適合團隊共用：
+不同人打開同一個網址即可操作，資料共用同一顆 SQLite DB。網頁版的範圍是「Gmail
+匯入 → 抓正文 → AI 留用初判 → AI 議題分群 + 人工調整 → 下載 Word 新聞議題清單」，
+**不含**桌面版的議題綜整（摘要）與立場分析。所有步驟都要使用者手動按按鈕觸發，
+沒有背景自動排程。
+
+### 與桌面版的差異
+
+| | 桌面版 | 網頁版 |
+|---|---|---|
+| UI | PySide6 視窗 | 瀏覽器（Flask） |
+| 新聞來源 | Excel/CSV 匯入 或 Gmail | 只有 Gmail |
+| AI 分析範圍 | 完整 9 步（含綜整、立場分析） | 留用判斷 → 分群 → 人工調整 |
+| 匯出 | 完整早報（含摘要/立場） | 簡易議題清單（`export_simple_topic_list`） |
+| 帳號 | 單機單人 | 共用密碼（無個別帳號） |
+| Gmail OAuth | Desktop App 類型，本機開瀏覽器 | Web Application 類型，固定 redirect URI |
+| 秘密儲存 | keyring（Windows Credential Manager） | 部署平台環境變數 |
+
+網頁版與桌面版共用同一套 `app/services`／`app/repositories`／`app/models`／
+`app/prompts`／`app/exporters/word_exporter.py`，AI 判斷/分群邏輯完全不重寫。
+
+### 本機測試網頁版
+
+```bash
+pip install -r requirements.txt
+export WEB_SHARED_PASSWORD=your-password
+export FLASK_SECRET_KEY=any-random-string
+export ANTHROPIC_API_KEY=sk-ant-...
+export GMAIL_OAUTH_CLIENT_ID=...        # 選填，測試 Gmail 連接才需要
+export GMAIL_OAUTH_CLIENT_SECRET=...
+python run_web.py
+```
+瀏覽器會自動開啟 `http://127.0.0.1:5000`。本機用 http 測試 Gmail OAuth 時，
+`run_web.py` 已自動設定 `OAUTHLIB_INSECURE_TRANSPORT=1`（僅本機測試用，正式
+部署一律走 https，不受影響）。
+
+### 部署到 Render
+
+1. **Google Cloud Console**：建立一組 **Web application** 類型的 OAuth 2.0
+   Client（新聞輿情桌面版用的是 Desktop app 類型，網頁版不能沿用同一組）。
+   Authorized redirect URI 填：`https://<你的 Render 服務網址>/gmail/oauth/callback`
+   （服務網址要等下一步 Render 建立服務後才知道，可以先用預留網址建立、之後
+   到 Google Cloud Console 補上正確網址）。
+2. **Render**：用本專案根目錄的 `render.yaml`（Blueprint）建立服務
+   （New → Blueprint，指向這個 GitHub repo）。Render 會自動讀取
+   `render.yaml`，建立一個掛了 1GB 持久磁碟（`/var/data`）的 web service。
+3. 在 Render Dashboard 的環境變數頁面填入（`render.yaml` 裡標示
+   `sync: false` 的都需要手動填）：
+   - `ANTHROPIC_API_KEY`
+   - `GMAIL_OAUTH_CLIENT_ID` / `GMAIL_OAUTH_CLIENT_SECRET`（步驟 1 建立的）
+   - `WEB_SHARED_PASSWORD`（團隊共用的登入密碼）
+   - `FLASK_SECRET_KEY` 由 Render 自動產生，不用手動填
+4. 部署完成後，打開服務網址 → 輸入共用密碼登入 → 到「設定」頁按「連接
+   Gmail」完成一次性 OAuth 授權、填寫寄件者信箱與主旨關鍵字 → 之後每天
+   上網站依「匯入 → 抓正文 → 留用初判 → 議題分群 → 匯出」順序操作即可。
+
+### 已知限制（有意簡化，非疏漏）
+
+- 只支援單一 instance（`-w 1`）：SQLite 檔案鎖 + 單一持久磁碟不支援水平擴展，
+  小團隊內部工具用途足夠。
+- 不做 Playwright 瀏覽器渲染抓取（雲端 instance 較輕量），只做
+  `requests + BeautifulSoup` 一段式抓取。
+- 只有一組共用密碼，沒有個別帳號與操作紀錄歸屬。
+
+---
+
 ## 8. 更新紀錄
 
 ### v4.2.0（本次版本）

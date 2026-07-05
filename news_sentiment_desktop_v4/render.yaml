@@ -1,0 +1,28 @@
+# Render Blueprint — 部署步驟見 README.md「網頁版部署到 Render」一節。
+#
+# -w 1（單一 gunicorn worker）：SQLite 檔案鎖與掛載的持久 Disk 只支援單一
+# instance，這是小團隊內部工具的合理取捨，不做水平擴展。
+services:
+  - type: web
+    name: news-sentiment-web
+    env: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 1 --timeout 120 "app.web.server:create_app()"
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GMAIL_OAUTH_CLIENT_ID
+        sync: false
+      - key: GMAIL_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: WEB_SHARED_PASSWORD
+        sync: false
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: NEWS_SENTIMENT_DATA_DIR
+        value: /var/data
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
