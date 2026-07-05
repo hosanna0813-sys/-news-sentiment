@@ -133,9 +133,10 @@ input[type=text], input[type=password], input[type=datetime-local] {
 .news-card-title { font-size: 0.92rem; }
 .news-card-meta { font-size: 0.78rem; margin-top: 0.15rem; }
 
-.topic-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
-.topic-chip.active { background: #4a90d9; color: #fff; border-color: #4a90d9; }
-.new-topic-chip { border-style: dashed; }
+/* 議題選擇用下拉選單而非一排按鈕：議題一多，按鈕會換行撐高，導致這欄跟左邊
+   「未分類新聞」欄的格子沒有左右對齊，下拉選單固定高度不受議題數量影響 */
+.topic-selector-row { display: flex; gap: 0.5rem; margin-bottom: 0.7rem; }
+.topic-selector-row select { flex: 1; min-width: 0; padding: 0.45rem 0.6rem; }
 
 .topic-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.7rem; }
 

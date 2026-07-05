@@ -9,11 +9,12 @@
     <p id="job-progress-label">處理中...</p>
   </div>
   <script>pollJob("{{ job_id }}");</script>
-{% else %}
-  <form method="post" action="{{ url_for('retention.run') }}">
-    <button type="submit">執行 AI 留用初判</button>
-  </form>
+  <p class="muted">（若確定沒有工作正在執行卻一直卡在這裡，可能是上次部署／重啟時工作意外中斷，
+     下面仍可以直接再按一次執行。）</p>
 {% endif %}
+<form method="post" action="{{ url_for('retention.run') }}">
+  <button type="submit">執行 AI 留用初判</button>
+</form>
 
 <table class="data-table retention-table">
   <thead>

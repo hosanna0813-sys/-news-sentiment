@@ -9,12 +9,13 @@
     <p id="job-progress-label">處理中...</p>
   </div>
   <script>pollJob("{{ job_id }}");</script>
-{% else %}
-  <form method="post" action="{{ url_for('clustering.run') }}">
-    <label><input type="checkbox" name="incremental" checked> 增量分群（只處理尚未歸入議題的新聞，維持既有議題結構）</label>
-    <button type="submit">執行 AI 議題分群</button>
-  </form>
+  <p class="muted">（若確定沒有工作正在執行卻一直卡在這裡，可能是上次部署／重啟時工作意外中斷，
+     下面仍可以直接再按一次執行。）</p>
 {% endif %}
+<form method="post" action="{{ url_for('clustering.run') }}">
+  <label><input type="checkbox" name="incremental" checked> 增量分群（只處理尚未歸入議題的新聞，維持既有議題結構）</label>
+  <button type="submit">執行 AI 議題分群</button>
+</form>
 
 {% macro news_card(it) %}
 <div class="news-card" draggable="true" data-row-id="{{ it.row_id }}"
@@ -36,14 +37,15 @@
 
   <div class="board-col">
     <h3>議題</h3>
-    <div class="topic-chips" id="topic-chips">
-      {% for t in topics %}
-        <button type="button" class="topic-chip" data-topic-id="{{ t.topic_id }}"
-                data-topic-name="{{ t.topic_name }}" onclick="selectTopic('{{ t.topic_id }}')">
-          {{ t.topic_name }}（{{ news_by_topic.get(t.topic_id, [])|length }}）
-        </button>
-      {% endfor %}
-      <button type="button" class="topic-chip new-topic-chip" onclick="createTopic()">➕ 新議題</button>
+    <div class="topic-selector-row">
+      <select id="topic-select" onchange="selectTopic(this.value)">
+        {% for t in topics %}
+          <option value="{{ t.topic_id }}" data-topic-name="{{ t.topic_name }}">
+            {{ t.topic_name }}（{{ news_by_topic.get(t.topic_id, [])|length }}）
+          </option>
+        {% endfor %}
+      </select>
+      <button type="button" onclick="createTopic()">➕ 新議題</button>
     </div>
 
     <div class="topic-toolbar" id="topic-toolbar" style="display:none">
@@ -116,24 +118,25 @@ function handleDrop(event, target) {
 function updateCounts() {
   document.getElementById("unclustered-count").textContent =
     document.getElementById("unclustered-list").querySelectorAll(".news-card").length;
-  document.querySelectorAll(".topic-chip[data-topic-id]").forEach(chip => {
-    const zone = document.getElementById("topic-members-" + chip.dataset.topicId);
+  document.querySelectorAll("#topic-select option").forEach(opt => {
+    const zone = document.getElementById("topic-members-" + opt.value);
     const count = zone ? zone.querySelectorAll(".news-card").length : 0;
-    chip.textContent = `${chip.dataset.topicName}（${count}）`;
+    opt.textContent = `${opt.dataset.topicName}（${count}）`;
   });
 }
 
 function selectTopic(topicId) {
   document.querySelectorAll(".topic-members").forEach(el => el.style.display = "none");
-  document.querySelectorAll(".topic-chip[data-topic-id]").forEach(el => el.classList.remove("active"));
   const zone = document.getElementById("topic-members-" + topicId);
   if (zone) zone.style.display = "block";
-  const chip = document.querySelector(`.topic-chip[data-topic-id="${topicId}"]`);
-  if (chip) chip.classList.add("active");
+
+  const select = document.getElementById("topic-select");
+  select.value = topicId;
+  const option = select.querySelector(`option[value="${topicId}"]`);
 
   document.getElementById("topic-toolbar").style.display = "flex";
   document.getElementById("toolbar-rename-topic-id").value = topicId;
-  document.getElementById("toolbar-rename-input").value = chip ? chip.dataset.topicName : "";
+  document.getElementById("toolbar-rename-input").value = option ? option.dataset.topicName : "";
   document.getElementById("toolbar-merge-source-id").value = topicId;
   document.getElementById("toolbar-delete-topic-id").value = topicId;
   document.getElementById("toolbar-delete-btn").disabled =
@@ -141,12 +144,12 @@ function selectTopic(topicId) {
 
   const mergeSelect = document.getElementById("toolbar-merge-target");
   mergeSelect.innerHTML = "";
-  document.querySelectorAll(".topic-chip[data-topic-id]").forEach(otherChip => {
-    if (otherChip.dataset.topicId === topicId) return;
-    const opt = document.createElement("option");
-    opt.value = otherChip.dataset.topicId;
-    opt.textContent = otherChip.dataset.topicName;
-    mergeSelect.appendChild(opt);
+  document.querySelectorAll("#topic-select option").forEach(opt => {
+    if (opt.value === topicId) return;
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.dataset.topicName;
+    mergeSelect.appendChild(o);
   });
 }
 

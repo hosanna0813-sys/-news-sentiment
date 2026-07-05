@@ -214,7 +214,9 @@ def test_retention_page_auto_shows_progress_for_inflight_job_without_query_param
     resp = logged_in_client.get("/retention")
     assert resp.status_code == 200
     assert b"progress-wrap" in resp.data
-    assert b"/retention/run" not in resp.data
+    # 「執行」按鈕一律照樣顯示——不能讓一筆因部署重啟而永遠停在 running 的殘留
+    # 工作紀錄，永久擋掉使用者重新觸發的能力（這是先前版本的真實 bug）。
+    assert b"/retention/run" in resp.data
 
 
 def test_retention_run_background_job(logged_in_client, web_app):
@@ -302,13 +304,35 @@ def test_clustering_page_board_layout_and_preview_data(logged_in_client, web_app
     html = resp.data.decode("utf-8")
     assert "cluster-board" in html
     assert "news-card" in html
-    assert "topic-chip" in html
+    # 議題選單改用下拉選單而非一排按鈕，避免議題一多時按鈕換行撐高，跟左欄
+    # 未分類新聞的格子對不齊（曾是實際回報的排版問題）。
+    assert 'id="topic-select"' in html
+    assert "topic-chip" not in html
 
     match = re.search(r"const NEWS_DATA = (\{.*?\});", html)
     assert match is not None
     news_data = json.loads(match.group(1))
     assert news_data["r1"]["body_text"] == "完整正文內容"
     assert news_data["r2"]["body_text"] == ""
+
+
+def test_clustering_page_shows_run_button_even_with_stale_running_job(logged_in_client, web_app):
+    # 迴歸測試：先前若偵測到（可能是部署重啟遺留的）running 工作就整個藏起
+    # 「執行」按鈕，一旦那筆工作紀錄卡死在 running（Render 重新部署會直接砍掉
+    # 背景執行緒，資料庫裡的狀態永遠不會被改成 completed），使用者就再也無法
+    # 觸發新的分群工作——這是實際回報的 bug，按鈕必須一律顯示。
+    from app.repositories.job_repository import JobRepository
+    from app.models.job import JobRecord
+
+    job_repo = JobRepository()
+    job = JobRecord.new("clustering", 10)
+    job_repo.create(job)
+    job_repo.update(job.job_id, {"status": "running"})
+
+    resp = logged_in_client.get("/clustering")
+    assert resp.status_code == 200
+    assert b"progress-wrap" in resp.data
+    assert b"/clustering/run" in resp.data
 
 
 def test_clustering_run_background_job(logged_in_client, web_app):
