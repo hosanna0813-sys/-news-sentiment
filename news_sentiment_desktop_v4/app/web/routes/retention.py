@@ -41,12 +41,20 @@ def _build_human_examples(feedback_repo, news_repo) -> str:
     for e in entries:
         if not (e.action or "").startswith("human_") or not (e.human_final_value or "").strip():
             continue
-        it = news_repo.get(e.entity_id)
-        if it is None:
-            continue
+        # 標題優先讀 reason 裡存的快照（記錄當下就存好，見 override() 的
+        # log_feedback 呼叫）——這樣「清除資料」把 news 資料表清空之後，這筆
+        # 回饋依然能用來組 few-shot 範例，不會因為 news_repo.get() 找不到
+        # 對應新聞就整筆被跳過，讓「留給以後訓練 AI」的紀錄實際上失去作用。
+        # 只有清除資料前就存在的舊紀錄（沒有標題快照）才需要退回即時查表。
+        title = e.reason or ""
+        if not title:
+            it = news_repo.get(e.entity_id)
+            if it is None:
+                continue
+            title = it.title
         old_label = "留用" if (e.ai_original_value or "") == "留用" else "不留用"
         new_label = "留用" if e.human_final_value == "留用" else "不留用"
-        lines.append(f"- 新聞《{it.title[:40]}》：AI 原判 {old_label} → 人工改判{new_label}")
+        lines.append(f"- 新聞《{title[:40]}》：AI 原判 {old_label} → 人工改判{new_label}")
         if len(lines) >= MAX_FEWSHOT_EXAMPLES:
             break
     return "\n".join(lines)
@@ -175,7 +183,7 @@ def override():
         })
         log_feedback(FeedbackRepository(), batch_id="", entity_type="retention", entity_id=row_id,
                       ai_original_value=old_status, human_final_value="留用" if retained else "不留用",
-                      action="human_override", operator="web")
+                      action="human_override", operator="web", reason=item.title[:60])
     # 勾選留用是用背景 fetch 送出（見 retention.html 的 toggleRetained()），
     # 不需要整頁重新導向、也不用浪費一次完整頁面渲染；沒有這個標頭的請求
     # （例如停用 JS 時的一般表單提交）才走原本的重新導向。

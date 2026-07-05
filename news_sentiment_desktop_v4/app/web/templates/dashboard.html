@@ -26,4 +26,12 @@
   <li><a href="{{ url_for('clustering.index') }}">執行 AI 議題分群並人工調整</a></li>
   <li><a href="{{ url_for('export.index') }}">產生並下載 Word 新聞議題清單</a></li>
 </ol>
+
+<h2>清除資料</h2>
+<p class="muted">清除這一輪匯入的新聞與議題，開始下一輪彙整。留用／分群的人工修正紀錄
+  不會被清除，會繼續用於之後 AI 判斷的參考。</p>
+<form method="post" action="{{ url_for('dashboard.clear_data') }}"
+      onsubmit="return confirm('確定要清除目前所有新聞與議題嗎？（人工修正紀錄不受影響）');">
+  <button type="submit">清除本輪新聞與議題</button>
+</form>
 {% endblock %}

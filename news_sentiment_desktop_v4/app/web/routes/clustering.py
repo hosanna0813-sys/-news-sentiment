@@ -84,8 +84,13 @@ def _build_human_examples(feedback_repo, news_repo) -> str:
             continue
         if not (e.human_final_value or "").strip():
             continue
-        it = news_repo.get(e.entity_id)
-        title = it.title if it else e.entity_id
+        # 標題優先讀 reason 裡存的快照（見 move() 的 log_feedback 呼叫），
+        # 「清除資料」把 news 清空後這筆回饋依然能拿來組 few-shot 範例；
+        # 沒有快照的舊紀錄才退回即時查表（找不到就用 entity_id 頂替，維持原行為）。
+        title = e.reason
+        if not title:
+            it = news_repo.get(e.entity_id)
+            title = it.title if it else e.entity_id
         old = (e.ai_original_value or "").strip() or "（未分類）"
         lines.append(f"- 新聞《{title[:40]}》：AI 原歸「{old[:30]}」→ 人工改為「{e.human_final_value[:30]}」")
         if len(lines) >= MAX_FEWSHOT_EXAMPLES:
@@ -263,7 +268,7 @@ def move():
 
     log_feedback(FeedbackRepository(), batch_id="", entity_type="clustering", entity_id=row_id,
                  ai_original_value=old_topic_name, human_final_value=new_label,
-                 action="human_move", operator="web")
+                 action="human_move", operator="web", reason=item.title[:60])
     # 拖放操作用背景 fetch 送出（見 clustering.html），成功後前端直接把卡片
     # DOM 節點搬到目標欄位，不需要整頁重新導向重繪一次（議題一多，那份 HTML
     # 不小，每拖一次都整頁重刷會很卡，捲動位置與已選議題都會被打斷）。

@@ -517,3 +517,40 @@ def test_pipeline_run_reports_gmail_import_failure(logged_in_client, web_app, mo
     status = _wait_job(logged_in_client, resp.headers["Location"], timeout=10)
     assert status["status"] == "failed"
     assert "找不到符合條件的信件" in status["params"]["stage_label"]
+
+
+def test_clear_data_removes_news_and_topics_but_keeps_feedback_log(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A"))
+    ctx.topic_repo.upsert_one(Topic(topic_id="t1", topic_name="議題A"))
+    logged_in_client.post("/retention/override", data={"row_id": "r1", "retained": "on"},
+                           follow_redirects=True)
+    assert len(ctx.feedback_repo.list_all()) == 1
+
+    resp = logged_in_client.post("/clear_data", follow_redirects=True)
+    assert resp.status_code == 200
+
+    assert ctx.news_repo.list_all() == []
+    assert ctx.topic_repo.list_active() == []
+    # 人工修正回饋紀錄要保留，供之後訓練 AI 判斷用
+    assert len(ctx.feedback_repo.list_all()) == 1
+
+
+def test_retention_few_shot_examples_survive_clear_data(logged_in_client, web_app):
+    """迴歸測試：override() 把新聞標題存進 feedback 的 reason 快照，
+    「清除資料」把 news 表清空後，_build_human_examples() 仍要能組出範例
+    （不能因為 news_repo.get() 找不到對應新聞就整筆默默跳過）。"""
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.news_repo.upsert_one(NewsItem(
+        row_id="r1", title="某某部門重大政策新聞", source="來源A",
+        retention_status="AI建議不留用",
+    ))
+    logged_in_client.post("/retention/override", data={"row_id": "r1", "retained": "on"},
+                           follow_redirects=True)
+
+    logged_in_client.post("/clear_data", follow_redirects=True)
+    assert ctx.news_repo.get("r1") is None
+
+    from app.web.routes.retention import _build_human_examples
+    examples = _build_human_examples(ctx.feedback_repo, ctx.news_repo)
+    assert "某某部門重大政策新聞" in examples
