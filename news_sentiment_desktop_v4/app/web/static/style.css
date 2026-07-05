@@ -103,53 +103,250 @@ input[type=text], input[type=password], input[type=datetime-local] {
 
 .inline-form { display: inline-flex; gap: 0.4rem; align-items: center; margin: 0.2rem 0; }
 
-/* 議題分群：左（未分類）／中（議題）／右（正文預覽）三欄拖曳看板 */
-.cluster-board {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr;
+/* 議題分群頁：cluster-board 保留給既有測試斷言用（見 clustering.html
+   workspace-grid 容器上的 class="cluster-board workspace-grid"），視覺版面
+   實際由下面 .cluster-page 這組桌面工作台風格的 class 負責。 */
+.cluster-page {
+  --primary: #7047e8;
+  --primary-hover: #5d38c9;
+  --primary-soft: #f1ecfd;
+  --surface: #ffffff;
+  --surface-muted: #f7f6fb;
+  --card-border: #e6e3ef;
+  --radius: 12px;
+}
+
+.cluster-header { margin-bottom: 1rem; }
+.cluster-header h1 { margin-bottom: 0.8rem; }
+
+.workflow-stepper {
+  display: flex;
+  list-style: none;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+}
+.workflow-stepper .step {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.workflow-stepper .step-num {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+.workflow-stepper .step.done { color: inherit; }
+.workflow-stepper .step.done .step-num { background: var(--primary-soft); color: var(--primary); }
+.workflow-stepper .step.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.workflow-stepper .step.active .step-num { background: var(--primary); color: #fff; }
+
+.stats-action-bar {
+  display: flex;
+  align-items: center;
   gap: 1.2rem;
+  flex-wrap: wrap;
+  background: var(--surface-muted);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin: 1rem 0;
+}
+.stat-cards-row { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-left: auto; }
+.stat-card-mini {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  min-width: 84px;
+}
+.stat-card-mini .stat-num { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+.stat-card-mini .stat-label { color: var(--muted); font-size: 0.75rem; }
+
+.primary-button {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-button:hover { background: var(--primary-hover); }
+.secondary-button {
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondary-button:disabled { color: var(--muted); border-color: var(--card-border); cursor: not-allowed; }
+
+/* 議題分群：左（待審新聞）／中（議題）／右（正文預覽）三欄工作區 */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, .9fr) minmax(400px, 1.1fr) minmax(320px, .9fr);
+  gap: 0;
   align-items: start;
   margin-top: 1rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
 }
-.board-col { min-width: 0; }
+.workspace-col { min-width: 0; padding: 1rem; }
+.workspace-col + .workspace-col { border-left: 1px solid var(--card-border); }
+.col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.col-header h3 { margin: 0; }
+
+.search-box {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+.tab-row { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; }
+.tab-btn {
+  background: var(--surface-muted);
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.tab-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
 
 .drop-zone {
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--card-border);
   border-radius: 8px;
   padding: 0.5rem;
   min-height: 140px;
-  max-height: 65vh;
+  max-height: 60vh;
   overflow-y: auto;
 }
 
 .news-card {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.5rem 0.7rem;
-  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.5rem;
   cursor: grab;
 }
 .news-card:active { cursor: grabbing; }
+.news-card-body { flex: 1; min-width: 0; cursor: pointer; }
 .news-card-title { font-size: 0.92rem; }
 .news-card-meta { font-size: 0.78rem; margin-top: 0.15rem; }
+
+.drop-hint {
+  border: 1px dashed var(--card-border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+
+/* 卡片／議題右上角的「⋮」收合選單，收納次要操作，避免常駐一排按鈕 */
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.card-menu-wrap, .topic-menu-wrap { position: relative; flex-shrink: 0; }
+.card-menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  color: var(--muted);
+}
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 0.4rem;
+  min-width: 160px;
+}
+.dropdown-menu.open { display: flex; flex-direction: column; gap: 0.3rem; }
+.dropdown-menu button, .dropdown-menu select { text-align: left; white-space: nowrap; }
+.topic-dropdown-menu { min-width: 220px; }
+.menu-form { display: flex; gap: 0.3rem; align-items: center; }
+.menu-form input[type=text] { flex: 1; min-width: 0; }
 
 /* 議題選擇用下拉選單而非一排按鈕：議題一多，按鈕會換行撐高，導致這欄跟左邊
    「未分類新聞」欄的格子沒有左右對齊，下拉選單固定高度不受議題數量影響 */
 .topic-selector-row { display: flex; gap: 0.5rem; margin-bottom: 0.7rem; }
 .topic-selector-row select { flex: 1; min-width: 0; padding: 0.45rem 0.6rem; }
 
-.topic-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.7rem; }
-
 #preview-panel {
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
   padding: 0.9rem;
   min-height: 220px;
 }
 #preview-panel .body-full { max-height: 50vh; }
 
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a2a2a;
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 100;
+}
+
 @media (max-width: 900px) {
-  .cluster-board { grid-template-columns: 1fr; }
+  .workspace-grid { grid-template-columns: 1fr; }
+  .workspace-col + .workspace-col { border-left: none; border-top: 1px solid var(--card-border); }
+}
+
+@media (prefers-color-scheme: dark) {
+  .cluster-page {
+    --surface: #232323;
+    --surface-muted: #1e1e1e;
+    --card-border: #3a3a3a;
+    --primary-soft: #2c2440;
+  }
+  .toast { background: #f4f4f4; color: #1a1a1a; }
 }
 
 .progress-wrap { margin: 1rem 0; }
