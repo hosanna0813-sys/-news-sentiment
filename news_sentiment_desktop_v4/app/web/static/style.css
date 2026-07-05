@@ -21,7 +21,7 @@ body {
 .topnav .brand { font-weight: bold; margin-right: 1rem; }
 .topnav .logout { margin-left: auto; }
 
-.container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+.container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 
 .stat-cards { display: flex; gap: 1rem; flex-wrap: wrap; }
 .stat-card {
@@ -59,7 +59,9 @@ table.retention-table th:nth-child(5), table.retention-table td:nth-child(5) { w
 
 tr.body-row td { padding-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
 tr.body-row summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
-tr.body-row .body-full {
+
+/* 正文全文顯示區塊——留用初判頁的收合區塊與議題分群頁的右側預覽面板共用 */
+.body-full {
   white-space: pre-wrap;
   margin-top: 0.4rem;
   padding: 0.6rem 0.8rem;
@@ -100,10 +102,54 @@ input[type=text], input[type=password], input[type=datetime-local] {
 }
 
 .inline-form { display: inline-flex; gap: 0.4rem; align-items: center; margin: 0.2rem 0; }
-.move-form select { max-width: 220px; }
 
-.topic-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
-.topic-header { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem; }
+/* 議題分群：左（未分類）／中（議題）／右（正文預覽）三欄拖曳看板 */
+.cluster-board {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 1.2rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+.board-col { min-width: 0; }
+
+.drop-zone {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-height: 140px;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.news-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.4rem;
+  cursor: grab;
+}
+.news-card:active { cursor: grabbing; }
+.news-card-title { font-size: 0.92rem; }
+.news-card-meta { font-size: 0.78rem; margin-top: 0.15rem; }
+
+.topic-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.7rem; }
+.topic-chip.active { background: #4a90d9; color: #fff; border-color: #4a90d9; }
+.new-topic-chip { border-style: dashed; }
+
+.topic-toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.7rem; }
+
+#preview-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  min-height: 220px;
+}
+#preview-panel .body-full { max-height: 50vh; }
+
+@media (max-width: 900px) {
+  .cluster-board { grid-template-columns: 1fr; }
+}
 
 .progress-wrap { margin: 1rem 0; }
 .progress-bar { background: #eee; border-radius: 6px; height: 14px; overflow: hidden; }

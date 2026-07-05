@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 
 import pytest
@@ -260,6 +261,54 @@ def test_clustering_manual_move_persists_and_logs_feedback(logged_in_client, web
 
     feedback_entries = ctx.feedback_repo.list_all(entity_type="clustering")
     assert any(e.entity_id == "r1" and e.action == "human_move" for e in feedback_entries)
+
+
+def test_clustering_move_via_fetch_returns_204_without_redirect(logged_in_client, web_app):
+    # 拖曳看板用背景 fetch 送出移動請求（見 clustering.html handleDrop()），
+    # 前端會直接搬動 DOM 節點，不應該整頁重新導向重繪。
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.topic_repo.upsert_one(Topic(topic_id="t1", topic_name="議題A"))
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A"))
+
+    resp = logged_in_client.post(
+        "/clustering/move",
+        data={"row_id": "r1", "target": "t1"},
+        headers={"X-Requested-With": "fetch"},
+    )
+    assert resp.status_code == 204
+    assert ctx.news_repo.get("r1").final_topic_id == "t1"
+
+
+def test_clustering_create_topic(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    resp = logged_in_client.post("/clustering/create_topic", data={"name": "手動建立的議題"},
+                                  follow_redirects=True)
+    assert resp.status_code == 200
+    topics = ctx.topic_repo.list_active()
+    assert any(t.topic_name == "手動建立的議題" for t in topics)
+
+
+def test_clustering_page_board_layout_and_preview_data(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.topic_repo.upsert_one(Topic(topic_id="t1", topic_name="議題A"))
+    ctx.news_repo.upsert_one(NewsItem(
+        row_id="r1", title="新聞一", source="來源A", body_text="完整正文內容",
+        retained=True, final_topic_id="t1", final_topic_name="議題A",
+    ))
+    ctx.news_repo.upsert_one(NewsItem(row_id="r2", title="新聞二", source="來源B", retained=True))
+
+    resp = logged_in_client.get("/clustering")
+    assert resp.status_code == 200
+    html = resp.data.decode("utf-8")
+    assert "cluster-board" in html
+    assert "news-card" in html
+    assert "topic-chip" in html
+
+    match = re.search(r"const NEWS_DATA = (\{.*?\});", html)
+    assert match is not None
+    news_data = json.loads(match.group(1))
+    assert news_data["r1"]["body_text"] == "完整正文內容"
+    assert news_data["r2"]["body_text"] == ""
 
 
 def test_clustering_run_background_job(logged_in_client, web_app):

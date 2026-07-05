@@ -30,6 +30,13 @@ MAX_FEWSHOT_EXAMPLES = 10
 MAX_EXISTING_TOPICS_IN_PROMPT = 30
 
 
+def _preview_payload(it):
+    return {
+        "title": it.title, "source": it.source, "published_at": it.published_at,
+        "url": it.url, "body_text": it.body_text,
+    }
+
+
 @clustering_bp.route("/clustering")
 def index():
     ctx = get_context()
@@ -44,8 +51,16 @@ def index():
         running = JobRepository().list_resumable("clustering")
         if running:
             job_id = running[0].job_id
+
+    # 拖曳卡片點擊時，右側預覽面板純用前端 JS 從這份查表取資料顯示，
+    # 不必為了「點一下看正文」多打一次後端請求。
+    news_lookup = {it.row_id: _preview_payload(it) for it in unclustered}
+    for members in news_by_topic.values():
+        for it in members:
+            news_lookup[it.row_id] = _preview_payload(it)
+
     return render_template("clustering.html", topics=topics, news_by_topic=news_by_topic,
-                            unclustered=unclustered, job_id=job_id)
+                            unclustered=unclustered, job_id=job_id, news_lookup=news_lookup)
 
 
 def _build_human_examples(feedback_repo, news_repo) -> str:
@@ -207,6 +222,20 @@ def move():
     log_feedback(FeedbackRepository(), batch_id="", entity_type="clustering", entity_id=row_id,
                  ai_original_value=old_topic_name, human_final_value=new_label,
                  action="human_move", operator="web")
+    # 拖放操作用背景 fetch 送出（見 clustering.html），成功後前端直接把卡片
+    # DOM 節點搬到目標欄位，不需要整頁重新導向重繪一次（議題一多，那份 HTML
+    # 不小，每拖一次都整頁重刷會很卡，捲動位置與已選議題也會被打斷）。
+    if request.headers.get("X-Requested-With") == "fetch":
+        return ("", 204)
+    return redirect(url_for("clustering.index"))
+
+
+@clustering_bp.route("/clustering/create_topic", methods=["POST"])
+def create_topic():
+    ctx = get_context()
+    name = request.form.get("name", "").strip() or "新議題"
+    topic = Topic(topic_id=new_id("ftopic_"), topic_name=name)
+    ctx.topic_repo.upsert_one(topic)
     return redirect(url_for("clustering.index"))
 
 
