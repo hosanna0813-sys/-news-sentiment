@@ -21,7 +21,8 @@ from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.settings_repository import PromptRepository
 from app.services.ai.model_gateway import ModelGateway, GatewayError
 from app.services.retention.retention_service import (
-    judge_batch, prefilter_batch, decide_retain, _FALLBACK_JUDGEMENT as _DEFAULT_JUDGEMENT,
+    judge_batch, prefilter_batch, decide_retain, build_human_examples,
+    _FALLBACK_JUDGEMENT as _DEFAULT_JUDGEMENT,
 )
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
@@ -40,32 +41,10 @@ _ZERO_SCORE_FIELDS = {
 
 def _build_retention_human_examples(feedback_repo, news_repo: NewsRepository,
                                      max_examples: int = MAX_FEWSHOT_EXAMPLES) -> str:
-    """方案D：讀取近期人工留用修正紀錄，組成少樣本範例注入細評 prompt（比照
-    clustering_worker._build_human_examples 的作法）。只計入人工覆核紀錄
-    （action 以 human_ 開頭），不含 AI 自己的判斷 log。"""
-    if feedback_repo is None:
-        return ""
-    try:
-        entries = feedback_repo.list_all(entity_type="retention")
-    except Exception:
-        return ""
-    lines = []
-    for e in entries:
-        if not (e.action or "").startswith("human_"):
-            continue
-        if not (e.human_final_value or "").strip():
-            continue
-        it = news_repo.get(e.entity_id)
-        if it is None:
-            continue
-        title = it.title[:40]
-        old_stars = it.priority_stars if it.priority_stars else "無"
-        old_label = "留用" if (e.ai_original_value or "") == "留用" else "不留用"
-        new_label = "留用" if e.human_final_value == "留用" else "不留用"
-        lines.append(f"- 新聞《{title}》：AI 原判 ★{old_stars} {old_label} → 人工改判{new_label}")
-        if len(lines) >= max_examples:
-            break
-    return "\n".join(lines)
+    """已收斂至 retention_service.build_human_examples()（原本這裡與網頁版
+    app/web/routes/retention.py 的 _build_human_examples 各自重複實作一份、
+    且已經出現分岔），保留原函式名稱／簽章供既有呼叫端與測試沿用。"""
+    return build_human_examples(feedback_repo, news_repo, max_examples)
 
 
 def build_retention_worker(items: List[NewsItem], batch_size: int, gateway: ModelGateway,

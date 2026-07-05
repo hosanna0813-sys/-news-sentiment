@@ -33,7 +33,7 @@ class TopicAnalysisWorker(QThread):
 
     def __init__(self, topics: List[Topic], gateway: ModelGateway, news_repo: NewsRepository,
                  topic_repo: TopicRepository, stance_repo: StanceRepository,
-                 prompt_repo: PromptRepository, parent=None):
+                 prompt_repo: PromptRepository, db_path=None, parent=None):
         super().__init__(parent)
         self.topics = topics
         self.gateway = gateway
@@ -41,12 +41,19 @@ class TopicAnalysisWorker(QThread):
         self.topic_repo = topic_repo
         self.stance_repo = stance_repo
         self.prompt_repo = prompt_repo
+        self.db_path = db_path
         self._cancel = False
 
     def request_cancel(self) -> None:
         self._cancel = True
 
     def run(self) -> None:
+        # 在本 QThread 執行緒內重新建立 repo（thread-local 連線），理由同
+        # clustering_worker.py 的說明——不沿用建構子收到的主執行緒 repo 物件。
+        self.news_repo = NewsRepository(self.db_path)
+        self.topic_repo = TopicRepository(self.db_path)
+        self.stance_repo = StanceRepository(self.db_path)
+        self.prompt_repo = PromptRepository(self.db_path)
         summ_cfg = get_active_prompt(self.prompt_repo, "topic_summarization")
         summ_schema = json.loads(summ_cfg.tool_schema_json)
         from app.prompts.summarization_prompt import (

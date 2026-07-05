@@ -5,7 +5,9 @@ import types
 
 from app.models.news import NewsItem
 from app.services.ai.model_gateway import ModelGateway
-from app.services.retention.retention_service import judge_batch, prefilter_batch
+from app.services.retention.retention_service import (
+    judge_batch, prefilter_batch, apply_human_retention_override,
+)
 from app.workers.retention_worker import build_retention_worker, _build_retention_human_examples
 from app.prompts.retention_prompt import (
     TOOL_NAME, TOOL_SCHEMA, SYSTEM_PROMPT, USER_TEMPLATE,
@@ -384,3 +386,101 @@ def test_build_retention_worker_threads_human_examples_into_api_call(
     user_content = judge_call["messages"][0]["content"]
     assert "陽明山國家公園步道整修工程" in user_content
     assert "★2" in user_content
+
+
+# ---------- apply_human_retention_override() ----------
+# 這條規則原本寫死在 app/ui/pages/retention_page.py 的兩個 Qt slot 裡，沒有
+# QApplication 就無法單獨測試；抽成 retention_service 的純函式後，這裡直接
+# 驗證狀態轉換與 feedback log，不需要啟動任何 Qt 元件。
+
+def test_apply_human_retention_override_marks_retained(news_repo, feedback_repo):
+    news_repo.upsert_one(_make_item("r1"))
+    new_status = apply_human_retention_override(
+        news_repo, feedback_repo, "r1", True, old_status="AI建議不留用", action="human_override")
+
+    assert new_status == "留用"
+    item = news_repo.get("r1")
+    assert item.retained is True or item.retained == 1
+    assert item.retention_status == "留用"
+    assert item.retention_judged_by == "human"
+
+    entries = feedback_repo.list_all(entity_type="retention")
+    assert len(entries) == 1
+    assert entries[0].action == "human_override"
+    assert entries[0].ai_original_value == "AI建議不留用"
+    assert entries[0].human_final_value == "留用"
+
+
+def test_apply_human_retention_override_marks_not_retained(news_repo, feedback_repo):
+    news_repo.upsert_one(_make_item("r1"))
+    new_status = apply_human_retention_override(
+        news_repo, feedback_repo, "r1", False, old_status="留用", action="human_override_table")
+
+    assert new_status == "人工不留用"
+    item = news_repo.get("r1")
+    assert not item.retained
+    assert item.retention_status == "人工不留用"
+    assert item.retention_judged_by == "human"
+
+    entries = feedback_repo.list_all(entity_type="retention")
+    assert entries[0].action == "human_override_table"
+    assert entries[0].human_final_value == "人工不留用"
+
+
+def test_apply_human_retention_override_threads_reason_snapshot(news_repo, feedback_repo):
+    """網頁版靠 reason 存標題快照，讓「清除資料」把 news 清空後 few-shot 範例仍找得到標題"""
+    news_repo.upsert_one(_make_item("r1", title="測試標題快照"))
+    apply_human_retention_override(
+        news_repo, feedback_repo, "r1", True, old_status="待確認",
+        action="human_override", operator="web", reason="測試標題快照")
+
+    entry = feedback_repo.list_all(entity_type="retention")[0]
+    assert entry.operator == "web"
+    assert entry.reason == "測試標題快照"
+
+
+# ---------- 桌面版／網頁版共用同一份 build_human_examples() ----------
+# 兩邊原本各自重寫一份幾乎相同的邏輯，已經出現分岔（網頁版有標題快照 fallback、
+# 桌面版有星等顯示）。收斂成 retention_service.build_human_examples() 之後，
+# 兩邊薄轉接函式對同一份資料應該產生完全相同的輸出，且都同時具備兩個特性。
+
+def test_desktop_and_web_wrappers_produce_identical_output(news_repo, feedback_repo):
+    from app.workers.retention_worker import _build_retention_human_examples
+    from app.web.routes.retention import _build_human_examples as web_build_human_examples
+
+    news_repo.upsert_one(_make_item("r1", title="測試新聞一致性"))
+    news_repo.update_fields("r1", {"priority_stars": 3})
+    log_feedback(feedback_repo, batch_id="", entity_type="retention", entity_id="r1",
+                 ai_original_value="AI建議不留用", human_final_value="留用",
+                 action="human_override", operator="user")
+
+    desktop_result = _build_retention_human_examples(feedback_repo, news_repo)
+    web_result = web_build_human_examples(feedback_repo, news_repo)
+    assert desktop_result == web_result
+    assert "★3" in desktop_result  # 星等（原本只有桌面版才有）
+
+
+def test_web_wrapper_gains_star_rating_after_consolidation(news_repo, feedback_repo):
+    from app.web.routes.retention import _build_human_examples as web_build_human_examples
+
+    news_repo.upsert_one(_make_item("r1", title="網頁版也該顯示星等"))
+    news_repo.update_fields("r1", {"priority_stars": 4})
+    log_feedback(feedback_repo, batch_id="", entity_type="retention", entity_id="r1",
+                 ai_original_value="AI建議不留用", human_final_value="留用",
+                 action="human_override", operator="web", reason="網頁版也該顯示星等")
+
+    result = web_build_human_examples(feedback_repo, news_repo)
+    assert "★4" in result
+
+
+def test_desktop_wrapper_gains_title_snapshot_fallback_after_consolidation(news_repo, feedback_repo):
+    """news 列已被刪除（比照「清除資料」情境），桌面版現在也能靠 reason 快照
+    組出範例，不再因為 news_repo.get() 找不到就整筆跳過。"""
+    from app.workers.retention_worker import _build_retention_human_examples
+
+    log_feedback(feedback_repo, batch_id="", entity_type="retention", entity_id="deleted_row",
+                 ai_original_value="AI建議不留用", human_final_value="留用",
+                 action="human_override", operator="web", reason="已被清除資料的新聞標題")
+
+    result = _build_retention_human_examples(feedback_repo, news_repo)
+    assert "已被清除資料的新聞標題" in result

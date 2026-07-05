@@ -18,7 +18,7 @@ from app.repositories.news_repository import NewsRepository
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.job_repository import JobRepository, BatchRepository
 from app.services.retention.retention_service import prefilter_batch, judge_batch, decide_retain, \
-    _FALLBACK_JUDGEMENT
+    apply_human_retention_override, build_human_examples, _FALLBACK_JUDGEMENT
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
 
@@ -36,28 +36,11 @@ _ZERO_SCORE_FIELDS = {
 
 
 def _build_human_examples(feedback_repo, news_repo) -> str:
-    entries = feedback_repo.list_all(entity_type="retention")
-    lines = []
-    for e in entries:
-        if not (e.action or "").startswith("human_") or not (e.human_final_value or "").strip():
-            continue
-        # 標題優先讀 reason 裡存的快照（記錄當下就存好，見 override() 的
-        # log_feedback 呼叫）——這樣「清除資料」把 news 資料表清空之後，這筆
-        # 回饋依然能用來組 few-shot 範例，不會因為 news_repo.get() 找不到
-        # 對應新聞就整筆被跳過，讓「留給以後訓練 AI」的紀錄實際上失去作用。
-        # 只有清除資料前就存在的舊紀錄（沒有標題快照）才需要退回即時查表。
-        title = e.reason or ""
-        if not title:
-            it = news_repo.get(e.entity_id)
-            if it is None:
-                continue
-            title = it.title
-        old_label = "留用" if (e.ai_original_value or "") == "留用" else "不留用"
-        new_label = "留用" if e.human_final_value == "留用" else "不留用"
-        lines.append(f"- 新聞《{title[:40]}》：AI 原判 {old_label} → 人工改判{new_label}")
-        if len(lines) >= MAX_FEWSHOT_EXAMPLES:
-            break
-    return "\n".join(lines)
+    """已收斂至 retention_service.build_human_examples()（原本這裡與桌面版
+    app/workers/retention_worker.py 的 _build_retention_human_examples 各自
+    重複實作一份、且已經出現分岔——這份原本多了 reason 標題快照、桌面版原本
+    多了 ★星等），保留原函式名稱供既有測試沿用，兩邊現在拿到完整功能。"""
+    return build_human_examples(feedback_repo, news_repo, MAX_FEWSHOT_EXAMPLES)
 
 
 def build_keyword_context(ctx) -> str:
@@ -175,15 +158,10 @@ def override():
     retained = request.form.get("retained") == "on"
     item = ctx.news_repo.get(row_id)
     if item is not None:
-        old_status = item.retention_status
-        ctx.news_repo.update_fields(row_id, {
-            "retained": 1 if retained else 0,
-            "retention_status": "留用" if retained else "人工不留用",
-            "retention_judged_by": "human",
-        })
-        log_feedback(FeedbackRepository(), batch_id="", entity_type="retention", entity_id=row_id,
-                      ai_original_value=old_status, human_final_value="留用" if retained else "不留用",
-                      action="human_override", operator="web", reason=item.title[:60])
+        apply_human_retention_override(
+            ctx.news_repo, FeedbackRepository(), row_id, retained,
+            old_status=item.retention_status, action="human_override",
+            operator="web", reason=item.title[:60])
     # 勾選留用是用背景 fetch 送出（見 retention.html 的 toggleRetained()），
     # 不需要整頁重新導向、也不用浪費一次完整頁面渲染；沒有這個標頭的請求
     # （例如停用 JS 時的一般表單提交）才走原本的重新導向。

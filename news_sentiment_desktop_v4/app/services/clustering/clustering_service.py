@@ -16,8 +16,11 @@ import json
 from typing import List, Dict, Any
 from datetime import datetime
 
+from typing import List
+
 from app.models.news import NewsItem
 from app.services.ai.model_gateway import ModelGateway
+from app.services.feedback.feedback_service import log_feedback
 from app.utils.text_utils import safe_json_loads, coerce_model_list, safe_format
 from app.utils.text_utils import new_id
 from app.utils.logging_setup import get_logger
@@ -26,6 +29,37 @@ logger = get_logger("clustering_service")
 
 MIN_BODY_WORDS_FOR_CLUSTERING = 50
 BODY_EXCERPT_LEN = 1200  # 送入分群 prompt 的正文截斷長度，控制單批 token 量
+
+
+def assign_news_to_topic(news_repo, feedback_repo, row_ids: List[str], topic_id: str,
+                          topic_name: str, action: str, operator: str = "user") -> None:
+    """人工把新聞歸入（既有或新建）議題：寫回 final_topic_id/name、清除低信心標記、
+    記錄 feedback log。抽成獨立函式，因為桌面版議題調整頁的建立新議題／移入議題／
+    拆分議題／合併議題四個操作原本各自呼叫一段幾乎相同的迴圈（且沒有 QApplication
+    無法單獨測試）。"""
+    for rid in row_ids:
+        it = news_repo.get(rid)
+        old_topic = it.final_topic_name if it else ""
+        news_repo.update_fields(rid, {
+            "final_topic_id": topic_id, "final_topic_name": topic_name,
+            "clustering_confidence": 0,  # 人工確認過的歸屬，清除低信心標記
+        })
+        log_feedback(feedback_repo, batch_id="", entity_type="clustering", entity_id=rid,
+                     ai_original_value=old_topic, human_final_value=topic_name,
+                     action=action, operator=operator)
+
+
+def unassign_news_from_topic(news_repo, feedback_repo, row_ids: List[str],
+                              action: str = "human_unassign", operator: str = "user") -> None:
+    """人工把新聞移出議題（拖回未分類清單／按下「不納入」按鈕皆呼叫這個函式，
+    原本這兩個操作在頁面裡各自重複實作一次）。"""
+    for rid in row_ids:
+        it = news_repo.get(rid)
+        old_topic = it.final_topic_name if it else ""
+        news_repo.update_fields(rid, {"final_topic_id": "", "final_topic_name": ""})
+        log_feedback(feedback_repo, batch_id="", entity_type="clustering", entity_id=rid,
+                     ai_original_value=old_topic, human_final_value="（不納入任何議題）",
+                     action=action, operator=operator)
 
 
 def split_insufficient_body(items: List[NewsItem]) -> (List[NewsItem], List[NewsItem]):

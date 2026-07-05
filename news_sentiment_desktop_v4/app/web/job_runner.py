@@ -66,6 +66,7 @@ def _run_batches(job: JobRecord, job_type: str, batch_records: list,
                   process_batch_fn: Callable[[List[Any]], BatchOutcome],
                   job_repo: JobRepository, batch_repo: BatchRepository) -> None:
     counters = {"success": 0, "failed": 0, "skipped": 0, "progress": 0}
+    total_items = sum(len(batch_items) for _, batch_items, _ in batch_records)
     for idx, batch_items, record in batch_records:
         batch_repo.update(record.batch_id, {"status": "running", "started_at": time.time()})
         try:
@@ -92,20 +93,35 @@ def _run_batches(job: JobRecord, job_type: str, batch_records: list,
             "failed_count": counters["failed"], "skipped_count": counters["skipped"],
         })
 
-    job_repo.update(job.job_id, {"status": "completed", "finished_at": time.time()})
+    # 全部批次都失敗（一則都沒成功）時不該還宣稱 completed——那個字眼暗示工作
+    # 正常跑完，會讓使用者誤以為只是「留用 0 則」而不是「AI 呼叫整批失敗」。
+    # 只要有任何一批成功，仍視為 completed（沿用既有行為：個別失敗批次標記
+    # retryable，成功的部分已經保存，狀態數字本身足以呈現部分失敗）。
+    all_failed = total_items > 0 and counters["success"] == 0 and counters["failed"] == total_items
+    final_status = "failed" if all_failed else "completed"
+    job_repo.update(job.job_id, {"status": final_status, "finished_at": time.time()})
 
 
 def start_batch_job(job_type: str, item_batches: List[List[Any]],
                      process_batch_fn: Callable[[List[Any]], BatchOutcome],
                      job_repo: JobRepository, batch_repo: BatchRepository,
                      job_label_fn: Optional[Callable[[Any], str]] = None) -> str:
-    """建立 Job/Batch 紀錄並立即在背景執行緒開始處理，回傳 job_id 供前端輪詢。"""
+    """建立 Job/Batch 紀錄並立即在背景執行緒開始處理，回傳 job_id 供前端輪詢。
+
+    job_repo/batch_repo 只用於這裡的同步建立步驟（呼叫端所在的 request 執行緒）；
+    背景執行緒實際跑批次迴圈時改重新建立自己的 JobRepository()/BatchRepository()
+    （thread-local 連線），不沿用 request 執行緒建立的物件——sqlite3 連線不可跨
+    執行緒共用同一物件，否則可能與其他並行 request（例如輪詢 /jobs/<id>/status）
+    互相干擾，出現間歇性查詢失敗（比照 pipeline.py 的 _ThreadLocalCtx 慣例）。
+    """
     job_label_fn = job_label_fn or (lambda it: getattr(it, "row_id", str(it)))
     job, batch_records = _create_job_and_batches(job_type, item_batches, job_repo, batch_repo, job_label_fn)
 
+    def _run():
+        _run_batches(job, job_type, batch_records, process_batch_fn, JobRepository(), BatchRepository())
+
     threading.Thread(
-        target=_run_batches, args=(job, job_type, batch_records, process_batch_fn, job_repo, batch_repo),
-        name=f"webjob-{job_type}-{job.job_id[:8]}", daemon=True,
+        target=_run, name=f"webjob-{job_type}-{job.job_id[:8]}", daemon=True,
     ).start()
     return job.job_id
 

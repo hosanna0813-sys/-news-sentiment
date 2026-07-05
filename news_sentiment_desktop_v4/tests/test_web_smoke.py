@@ -529,6 +529,75 @@ def test_run_batch_job_sync_announces_sub_job_before_batches_finish(web_app):
     assert final.status == "completed"
     assert final.success_count == 2
 
+
+def test_run_batches_marks_job_failed_when_every_batch_fails(web_app):
+    """全部批次都失敗（一則都沒成功）時，job 層級狀態不該仍宣稱 completed——
+    那個字眼會讓使用者誤以為工作正常跑完只是留用 0 則，而不是整批 AI 呼叫失敗。"""
+    from app.web.job_runner import start_batch_job, BatchOutcome
+    from app.repositories.job_repository import JobRepository, BatchRepository
+
+    job_repo = JobRepository()
+    batch_repo = BatchRepository()
+
+    def always_fail(batch_items):
+        return BatchOutcome(success=False, error_type="other", error_detail="模擬全部失敗")
+
+    job_id = start_batch_job("retention", [["a"], ["b"]], always_fail, job_repo, batch_repo)
+    deadline = time.time() + 5.0
+    job = job_repo.get(job_id)
+    while job.status == "running" and time.time() < deadline:
+        time.sleep(0.02)
+        job = job_repo.get(job_id)
+
+    assert job.status == "failed"
+    assert job.success_count == 0
+    assert job.failed_count == 2
+
+
+def test_run_batches_stays_completed_when_some_batches_succeed(web_app):
+    """部分批次失敗仍視為 completed（既有行為）：成功的部分已保存，失敗筆數
+    本身已經反映在 failed_count，不需要把整個 job 判定為失敗。"""
+    from app.web.job_runner import start_batch_job, BatchOutcome
+    from app.repositories.job_repository import JobRepository, BatchRepository
+
+    job_repo = JobRepository()
+    batch_repo = BatchRepository()
+
+    def process(batch_items):
+        if batch_items[0] == "bad":
+            return BatchOutcome(success=False, error_type="other", error_detail="模擬失敗")
+        return BatchOutcome(success=True, success_count=len(batch_items))
+
+    job_id = start_batch_job("retention", [["ok"], ["bad"]], process, job_repo, batch_repo)
+    deadline = time.time() + 5.0
+    job = job_repo.get(job_id)
+    while job.status == "running" and time.time() < deadline:
+        time.sleep(0.02)
+        job = job_repo.get(job_id)
+
+    assert job.status == "completed"
+    assert job.success_count == 1
+    assert job.failed_count == 1
+
+
+def test_create_app_marks_stale_running_jobs_as_failed_on_startup(web_app):
+    """模擬雲端部署重新啟動：上次程序留下的 running 工作紀錄，其實對應的背景
+    執行緒早就被砍掉了，重啟後應該被標記為 failed，而不是讓 UI 一直顯示一個
+    看起來還在跑、實際上已經死掉的進度條。"""
+    from app.repositories.job_repository import JobRepository
+    from app.models.job import JobRecord
+
+    job_repo = JobRepository()
+    job = JobRecord.new("clustering", 10)
+    job_repo.create(job)
+    job_repo.update(job.job_id, {"status": "running"})
+
+    from app.web.server import create_app
+    create_app()  # 模擬程序重啟：重新呼叫 app factory
+
+    assert job_repo.get(job.job_id).status == "failed"
+
+
 def test_pipeline_run_reports_gmail_import_failure(logged_in_client, web_app, monkeypatch):
     import app.web.routes.pipeline as pipeline_module
     from app.services.gmail.gmail_importer import GmailImportError

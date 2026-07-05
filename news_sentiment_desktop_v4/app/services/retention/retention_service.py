@@ -12,9 +12,69 @@ from typing import List, Dict, Any
 from app.models.news import NewsItem
 from app.utils.text_utils import coerce_model_list, safe_format
 from app.services.ai.model_gateway import ModelGateway
+from app.services.feedback.feedback_service import log_feedback
 from app.utils.logging_setup import get_logger
 
 logger = get_logger("retention_service")
+
+MAX_FEWSHOT_EXAMPLES = 10
+
+
+def build_human_examples(feedback_repo, news_repo, max_examples: int = MAX_FEWSHOT_EXAMPLES) -> str:
+    """人工留用修正紀錄組成的少樣本範例（方案D），注入細評 prompt 讓模型學習
+    編輯的判斷偏好。桌面版（原 retention_worker._build_retention_human_examples）
+    與網頁版（原 retention.py 路由的 _build_human_examples）原本各自實作一份
+    幾乎相同的邏輯，且已經出現分岔：網頁版多了從 reason 讀標題快照（讓「清除
+    資料」把 news 清空後範例仍能顯示標題），桌面版多了顯示 ★星等。這裡收斂成
+    一份，兩邊都保留各自原有名稱的薄轉接函式，同時拿到完整功能。"""
+    if feedback_repo is None:
+        return ""
+    try:
+        entries = feedback_repo.list_all(entity_type="retention")
+    except Exception:
+        return ""
+    lines = []
+    for e in entries:
+        if not (e.action or "").startswith("human_"):
+            continue
+        if not (e.human_final_value or "").strip():
+            continue
+        it = news_repo.get(e.entity_id)
+        title = e.reason or (it.title if it else "")
+        if not title:
+            continue  # 沒有標題快照、對應新聞也已不存在，無法組出有意義的範例
+        star_part = ""
+        if it is not None:
+            stars = it.priority_stars if it.priority_stars else "無"
+            star_part = f"★{stars} "
+        old_label = "留用" if (e.ai_original_value or "") == "留用" else "不留用"
+        new_label = "留用" if e.human_final_value == "留用" else "不留用"
+        lines.append(f"- 新聞《{title[:40]}》：AI 原判 {star_part}{old_label} → 人工改判{new_label}")
+        if len(lines) >= max_examples:
+            break
+    return "\n".join(lines)
+
+
+def apply_human_retention_override(news_repo, feedback_repo, row_id: str, new_value: bool,
+                                    old_status: str = "", action: str = "human_override",
+                                    operator: str = "user", reason: str = "") -> str:
+    """人工在留用初判頁勾選/取消留用時的狀態轉換：更新 retained/retention_status/
+    retention_judged_by 並記錄 feedback log，回傳新的 retention_status 字串。
+
+    桌面版與網頁版原本各自在 Qt slot／Flask route 裡重寫一份幾乎相同的邏輯
+    （桌面版沒有 QApplication 就無法單元測試這段規則），現在收斂成一份共用函式。
+    reason：選填的標題快照（見網頁版 clustering.move()），讓「清除資料」把 news
+    列刪除後，few-shot 範例仍能顯示新聞標題。"""
+    new_status = "留用" if new_value else "人工不留用"
+    news_repo.update_fields(row_id, {
+        "retained": 1 if new_value else 0,
+        "retention_status": new_status,
+        "retention_judged_by": "human",
+    })
+    log_feedback(feedback_repo, batch_id="", entity_type="retention", entity_id=row_id,
+                 ai_original_value=old_status, human_final_value=new_status,
+                 action=action, operator=operator, reason=reason)
+    return new_status
 
 
 _FALLBACK_JUDGEMENT: Dict[str, Any] = {

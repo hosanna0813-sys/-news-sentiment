@@ -201,6 +201,36 @@ class ModelGateway:
                 pass  # 少數舊版 SDK 參數簽名不符，回退非串流
         return client.messages.create(model=model_id, **create_kwargs, **params)
 
+    # ---------- 共用：重試 + 指數退避 + 錯誤分類 ----------
+    def _call_with_retries(self, task: str, log_label: str, attempt_fn: Callable[[], Any]) -> Any:
+        """call_with_tool 與 call_json_mode 共用的重試迴圈：呼叫 attempt_fn()，
+        失敗時分類錯誤、記錄警告；NOT_CONFIGURED 不重試立即拋出，AUTH/
+        INVALID_REQUEST 重試結果不會改變、失敗一次就停止，其餘錯誤依指數退避
+        （封頂 30 秒）重試到 max_retries 次為止。耗盡重試後拋出最後一次的
+        GatewayError，交由呼叫端（worker）標記該批 failed/retryable。"""
+        last_error: Optional[GatewayError] = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                return attempt_fn()
+            except GatewayError as ge:
+                last_error = ge
+                if ge.error_type == GatewayErrorType.NOT_CONFIGURED:
+                    raise  # 沒設定 key，重試無意義
+                logger.warning(f"[{task}] {log_label}第 {attempt} 次呼叫失敗 ({ge.error_type}): {ge.message}")
+            except Exception as e:
+                err_type = _classify_exception(e)
+                last_error = GatewayError(err_type, str(e), raw=e)
+                logger.warning(f"[{task}] {log_label}第 {attempt} 次呼叫失敗 ({err_type}): {e}")
+
+            if last_error.error_type in (GatewayErrorType.AUTH, GatewayErrorType.INVALID_REQUEST):
+                break  # 認證錯誤與請求本身不合法：重試結果不會改變，直接停止
+            if attempt < self.max_retries:
+                backoff = self.retry_backoff_base_sec * (2 ** (attempt - 1))
+                time.sleep(min(backoff, 30))
+
+        assert last_error is not None
+        raise last_error
+
     # ---------- 核心呼叫：Tool Use 結構化輸出 ----------
     def call_with_tool(self, task: str, system_prompt: str, user_content: str,
                         tool_name: str, tool_schema: Dict[str, Any],
@@ -229,61 +259,45 @@ class ModelGateway:
             "input_schema": tool_schema,
         }]
 
-        last_error: Optional[GatewayError] = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                resp = self._create_message(
-                    task, model_id, params,
-                    system=system_prompt,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice={"type": "tool", "name": tool_name},
-                )
-                tool_block = next((b for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
-                text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
-                if tool_block is None:
-                    raise GatewayError(GatewayErrorType.PARSE_ERROR, "模型未回傳 tool_use 區塊")
-                return ToolUseResult(
-                    data=strip_artifacts_deep(tool_block.input),
-                    raw_text=strip_model_artifacts(
-                        getattr(text_block, "text", "") if text_block else ""),
-                    model_used=model_id,
-                    stop_reason=resp.stop_reason,
-                    usage={"input_tokens": resp.usage.input_tokens,
-                           "output_tokens": resp.usage.output_tokens},
-                )
-            except GatewayError as ge:
-                last_error = ge
-                if ge.error_type == GatewayErrorType.NOT_CONFIGURED:
-                    raise  # 沒設定 key，重試無意義
-                logger.warning(f"[{task}] 第 {attempt} 次呼叫失敗 ({ge.error_type}): {ge.message}")
-            except Exception as e:
-                err_type = _classify_exception(e)
-                last_error = GatewayError(err_type, str(e), raw=e)
-                logger.warning(f"[{task}] 第 {attempt} 次呼叫失敗 ({err_type}): {e}")
+        def _attempt() -> ToolUseResult:
+            resp = self._create_message(
+                task, model_id, params,
+                system=system_prompt,
+                messages=messages,
+                tools=tools,
+                tool_choice={"type": "tool", "name": tool_name},
+            )
+            tool_block = next((b for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
+            text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
+            if tool_block is None:
+                raise GatewayError(GatewayErrorType.PARSE_ERROR, "模型未回傳 tool_use 區塊")
+            return ToolUseResult(
+                data=strip_artifacts_deep(tool_block.input),
+                raw_text=strip_model_artifacts(
+                    getattr(text_block, "text", "") if text_block else ""),
+                model_used=model_id,
+                stop_reason=resp.stop_reason,
+                usage={"input_tokens": resp.usage.input_tokens,
+                       "output_tokens": resp.usage.output_tokens},
+            )
 
-            if last_error and last_error.error_type in (
-                    GatewayErrorType.AUTH, GatewayErrorType.INVALID_REQUEST):
-                break  # 認證錯誤與請求本身不合法：重試結果不會改變，直接停止
-            if attempt < self.max_retries:
-                backoff = self.retry_backoff_base_sec * (2 ** (attempt - 1))
-                time.sleep(min(backoff, 30))
-
-        assert last_error is not None
-        # 備援機制（規格四第 2 點）：若失敗原因是「模型未依 Tool Use 回傳結構化資料」
-        # （而非認證/限流等 API 層錯誤），改用 json_mode（system prompt 強制只回傳 JSON
-        # + 應用層嚴格解析）再嘗試一次，仍失敗才向上拋出原始錯誤。
-        if last_error.error_type == GatewayErrorType.PARSE_ERROR:
-            logger.warning(f"[{task}] Tool Use 解析失敗，降級改用 json_mode 備援")
-            try:
-                data = self.call_json_mode(task=task, system_prompt=system_prompt,
-                                            user_content=user_content)
-                cfg2 = self._task_model_lookup(task)
-                return ToolUseResult(data=data, raw_text="", model_used=cfg2.get("model_id", ""),
-                                      stop_reason="json_mode_fallback", usage={})
-            except GatewayError:
-                pass  # 備援也失敗，拋出原始錯誤
-        raise last_error
+        try:
+            return self._call_with_retries(task, "", _attempt)
+        except GatewayError as last_error:
+            # 備援機制（規格四第 2 點）：若失敗原因是「模型未依 Tool Use 回傳結構化資料」
+            # （而非認證/限流等 API 層錯誤），改用 json_mode（system prompt 強制只回傳 JSON
+            # + 應用層嚴格解析）再嘗試一次，仍失敗才向上拋出原始錯誤。
+            if last_error.error_type == GatewayErrorType.PARSE_ERROR:
+                logger.warning(f"[{task}] Tool Use 解析失敗，降級改用 json_mode 備援")
+                try:
+                    data = self.call_json_mode(task=task, system_prompt=system_prompt,
+                                                user_content=user_content)
+                    cfg2 = self._task_model_lookup(task)
+                    return ToolUseResult(data=data, raw_text="", model_used=cfg2.get("model_id", ""),
+                                          stop_reason="json_mode_fallback", usage={})
+                except GatewayError:
+                    pass  # 備援也失敗，拋出原始錯誤
+            raise
 
     # ---------- 純文字輸出（system prompt 已要求「只回傳合法 JSON」的備援方式） ----------
     def call_json_mode(self, task: str, system_prompt: str, user_content: str) -> Any:
@@ -297,35 +311,20 @@ class ModelGateway:
                                   cfg.get("use_extended_thinking", False))
 
         strict_system = system_prompt + "\n\n重要：只回傳合法 JSON，不要包含任何說明文字或 markdown 標記。"
-        last_error: Optional[GatewayError] = None
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                resp = self._create_message(
-                    task, model_id, params, system=strict_system,
-                    messages=[{"role": "user", "content": user_content}],
-                )
-                text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
-                text = getattr(text_block, "text", "") if text_block else ""
-                parsed = safe_json_loads(text)
-                if parsed is None:
-                    raise GatewayError(GatewayErrorType.PARSE_ERROR, f"JSON 解析失敗，原始回應：{text[:200]}")
-                return strip_artifacts_deep(parsed)
-            except GatewayError as ge:
-                last_error = ge
-                if ge.error_type == GatewayErrorType.NOT_CONFIGURED:
-                    raise
-                logger.warning(f"[{task}] json_mode 第 {attempt} 次失敗: {ge.message}")
-            except Exception as e:
-                err_type = _classify_exception(e)
-                last_error = GatewayError(err_type, str(e), raw=e)
-                logger.warning(f"[{task}] json_mode 第 {attempt} 次失敗 ({err_type}): {e}")
-            if last_error and last_error.error_type in (
-                    GatewayErrorType.AUTH, GatewayErrorType.INVALID_REQUEST):
-                break
-            if attempt < self.max_retries:
-                time.sleep(min(self.retry_backoff_base_sec * (2 ** (attempt - 1)), 30))
-        assert last_error is not None
-        raise last_error
+
+        def _attempt() -> Any:
+            resp = self._create_message(
+                task, model_id, params, system=strict_system,
+                messages=[{"role": "user", "content": user_content}],
+            )
+            text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
+            text = getattr(text_block, "text", "") if text_block else ""
+            parsed = safe_json_loads(text)
+            if parsed is None:
+                raise GatewayError(GatewayErrorType.PARSE_ERROR, f"JSON 解析失敗，原始回應：{text[:200]}")
+            return strip_artifacts_deep(parsed)
+
+        return self._call_with_retries(task, "json_mode ", _attempt)
 
     # ---------- 純文字輸出（map-reduce 中間摘要等內部用途） ----------
     def call_text(self, task: str, system_prompt: str, user_content: str,
