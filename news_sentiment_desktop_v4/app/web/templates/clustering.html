@@ -4,17 +4,10 @@
 {% set ns = namespace(topic_news_count=0) %}
 {% for t in topics %}{% set ns.topic_news_count = ns.topic_news_count + news_by_topic.get(t.topic_id, [])|length %}{% endfor %}
 {% set total_news_count = unclustered|length + not_retained|length + ns.topic_news_count %}
-{% set retained_count = total_news_count - not_retained|length %}
 
 <div class="cluster-page">
   <div class="cluster-header">
     <h1>議題分群與人工調整</h1>
-    <ol class="workflow-stepper">
-      <li class="step {{ 'done' if total_news_count > 0 else '' }}"><span class="step-num">1</span><span class="step-label">載入新聞</span></li>
-      <li class="step {{ 'done' if retained_count > 0 else '' }}"><span class="step-num">2</span><span class="step-label">留用判斷</span></li>
-      <li class="step {{ 'done' if topics|length > 0 else '' }}"><span class="step-num">3</span><span class="step-label">議題分群</span></li>
-      <li class="step active"><span class="step-num">4</span><span class="step-label">人工調整</span></li>
-    </ol>
   </div>
 
   {% if job_id %}
@@ -315,7 +308,9 @@ function showPreview(rowId) {
 
   const body = document.createElement("div");
   body.className = "body-full";
-  body.textContent = data.body_text || "（尚無正文）";
+  // body_html 是後端用 highlight_keywords() 產生的安全 HTML（已跳脫，只多了
+  // <strong> 標記），完整原文不截斷，只加粗設定頁關鍵字彙整表裡出現過的詞。
+  body.innerHTML = data.body_html || "（尚無正文）";
   panel.appendChild(body);
 }
 

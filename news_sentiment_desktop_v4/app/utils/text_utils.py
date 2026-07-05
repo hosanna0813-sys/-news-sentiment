@@ -1,10 +1,11 @@
 """通用工具：ID 產生、文字清理、JSON 安全解析"""
 from __future__ import annotations
 
+import html
 import json
 import re
 import uuid
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 def new_id(prefix: str = "") -> str:
@@ -169,6 +170,55 @@ def extract_placeholders(template: str) -> set:
     if not template:
         return set()
     return set(re.findall(r"\{(\w+)\}", template))
+
+
+def extract_keywords_from_taxonomy(taxonomy: str) -> List[str]:
+    """從「議題／關鍵字彙整表」free-text（設定頁 keyword_taxonomy）粗略取出個別
+    關鍵字詞，只用於新聞正文預覽的加粗提示——不影響 AI 判斷邏輯（那邊仍是整段
+    原文交給模型理解語意，見 app/web/routes/retention.py 的
+    build_keyword_context()）。格式不強制工整：逐行嘗試切出「議題欄」與「關鍵字
+    欄」（用 tab／全形空白／兩個以上空白分隔，找不到就整行當關鍵字欄），關鍵字欄
+    再依常見布林/分隔符號拆開。單字元詞（雜訊機率高）不收錄。"""
+    if not taxonomy:
+        return []
+    keywords = set()
+    for line in taxonomy.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = re.split(r"\t|　| {2,}", line, maxsplit=1)
+        expr = parts[1] if len(parts) > 1 else parts[0]
+        for token in re.split(r"[|&()（）,，、\s]+", expr):
+            token = token.strip()
+            if len(token) >= 2:
+                keywords.add(token)
+    return sorted(keywords, key=len, reverse=True)
+
+
+def highlight_keywords(text: str, keywords: List[str]) -> str:
+    """把 text 轉成 HTML 安全字串，並將 keywords 中有出現的詞以 <strong> 包住
+    （新聞正文預覽加粗提示用）。完整原文照樣輸出、不做任何截斷，只是額外標記。
+    keywords 應已由長到短排序，讓較長、較specific 的詞在同一個起始位置優先命中，
+    不會被短詞搶先比對到一部分。"""
+    if not text:
+        return ""
+    if not keywords:
+        return html.escape(text)
+    pattern = "|".join(re.escape(k) for k in keywords if k)
+    if not pattern:
+        return html.escape(text)
+    regex = re.compile(f"({pattern})", re.IGNORECASE)
+    parts = regex.split(text)
+    out = []
+    for i, part in enumerate(parts):
+        if not part:
+            continue
+        escaped = html.escape(part)
+        if i % 2 == 1:  # re.split 搭配捕獲群組時，奇數索引是命中的關鍵字本身
+            out.append(f"<strong>{escaped}</strong>")
+        else:
+            out.append(escaped)
+    return "".join(out)
 
 
 def safe_format(template: str, **kwargs) -> str:

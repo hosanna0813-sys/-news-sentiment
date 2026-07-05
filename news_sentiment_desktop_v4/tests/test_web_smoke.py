@@ -405,6 +405,43 @@ def test_keyword_taxonomy_saved_and_injected_into_context(logged_in_client, web_
     assert "業務關注議題" in context_text
 
 
+def test_retention_page_bolds_keyword_matches_in_full_untruncated_body(logged_in_client, web_app):
+    """留用初判頁的正文預覽維持完整原文、不截斷，設定頁關鍵字彙整表裡出現過
+    的詞則加粗提示。"""
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.settings.keyword_taxonomy = "警政/治安\t槍擊案"
+    ctx.save_settings()
+    full_body = "開頭內容。" * 30 + "昨日發生槍擊案，警方已到場。" + "結尾內容。" * 30
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A", body_text=full_body))
+
+    resp = logged_in_client.get("/retention")
+    html = resp.data.decode("utf-8")
+    assert "開頭內容。" * 30 in html
+    assert "結尾內容。" * 30 in html
+    assert "<strong>槍擊案</strong>" in html
+
+
+def test_clustering_preview_data_bolds_keyword_matches_in_full_untruncated_body(logged_in_client, web_app):
+    """議題分群頁的正文預覽（NEWS_DATA.body_html，供 JS 點卡片預覽用）同樣維持
+    完整原文、不截斷，並加粗關鍵字彙整表裡出現過的詞。"""
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.settings.keyword_taxonomy = "警政/治安\t槍擊案"
+    ctx.save_settings()
+    full_body = "開頭內容。" * 30 + "昨日發生槍擊案，警方已到場。" + "結尾內容。" * 30
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A",
+                                       body_text=full_body, retained=True))
+
+    resp = logged_in_client.get("/clustering")
+    html = resp.data.decode("utf-8")
+    match = re.search(r"const NEWS_DATA = (\{.*?\});", html)
+    assert match is not None
+    news_data = json.loads(match.group(1))
+    body_html = news_data["r1"]["body_html"]
+    assert "開頭內容。" * 30 in body_html
+    assert "結尾內容。" * 30 in body_html
+    assert "<strong>槍擊案</strong>" in body_html
+
+
 def test_clustering_move_to_not_retained_and_rescue_back(logged_in_client, web_app):
     ctx = web_app.config["APP_CONTEXT"]
     ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A", retained=True))

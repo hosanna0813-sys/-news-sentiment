@@ -28,7 +28,7 @@ from app.services.clustering.clustering_service import (
 )
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
-from app.utils.text_utils import new_id
+from app.utils.text_utils import new_id, extract_keywords_from_taxonomy, highlight_keywords
 
 clustering_bp = Blueprint("clustering", __name__)
 
@@ -36,10 +36,13 @@ MAX_FEWSHOT_EXAMPLES = 10
 MAX_EXISTING_TOPICS_IN_PROMPT = 30
 
 
-def _preview_payload(it):
+def _preview_payload(it, keywords):
     return {
         "title": it.title, "source": it.source, "published_at": it.published_at,
         "url": it.url, "body_text": it.body_text,
+        # 正文預覽維持完整原文、不截斷，只把設定頁「議題／關鍵字彙整表」裡出現過
+        # 的詞加粗提示——純視覺輔助，不影響 AI 判斷邏輯。
+        "body_html": highlight_keywords(it.body_text, keywords) if it.body_text else "",
     }
 
 
@@ -65,11 +68,12 @@ def index():
 
     # 拖曳卡片點擊時，右側預覽面板純用前端 JS 從這份查表取資料顯示，
     # 不必為了「點一下看正文」多打一次後端請求。
-    news_lookup = {it.row_id: _preview_payload(it) for it in unclustered}
-    news_lookup.update({it.row_id: _preview_payload(it) for it in not_retained})
+    keywords = extract_keywords_from_taxonomy(ctx.settings.keyword_taxonomy)
+    news_lookup = {it.row_id: _preview_payload(it, keywords) for it in unclustered}
+    news_lookup.update({it.row_id: _preview_payload(it, keywords) for it in not_retained})
     for members in news_by_topic.values():
         for it in members:
-            news_lookup[it.row_id] = _preview_payload(it)
+            news_lookup[it.row_id] = _preview_payload(it, keywords)
 
     return render_template("clustering.html", topics=topics, news_by_topic=news_by_topic,
                             unclustered=unclustered, not_retained=not_retained,

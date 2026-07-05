@@ -21,13 +21,15 @@ body {
   color: #24222b;
 }
 
+/* 導覽列現在放在頁面最下方（見 base.html），用上邊框跟主內容分隔，
+   取代原本在頂部時的下邊框 */
 .topnav {
   display: flex;
   align-items: center;
   gap: 0.3rem;
   padding: 0.85rem 1.5rem;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
   flex-wrap: wrap;
 }
 .topnav .brand { font-weight: 700; color: var(--primary); margin-right: 1.2rem; text-decoration: none; }
@@ -220,43 +222,6 @@ input[type=checkbox] { accent-color: var(--primary); }
    實際由下面這組桌面工作台風格的 class 負責，配色沿用上面的全站 :root 變數。 */
 .cluster-header { margin-bottom: 1rem; }
 .cluster-header h1 { margin-bottom: 0.8rem; }
-
-.workflow-stepper {
-  display: flex;
-  list-style: none;
-  gap: 0.5rem;
-  padding: 0;
-  margin: 0;
-  flex-wrap: wrap;
-}
-.workflow-stepper .step {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid var(--card-border);
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-.workflow-stepper .step-num {
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  background: var(--surface-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-}
-.workflow-stepper .step.done { color: inherit; }
-.workflow-stepper .step.done .step-num { background: var(--primary-soft); color: var(--primary); }
-.workflow-stepper .step.active {
-  border-color: var(--primary);
-  color: var(--primary);
-  font-weight: 600;
-}
-.workflow-stepper .step.active .step-num { background: var(--primary); color: #fff; }
 
 .stats-action-bar {
   display: flex;

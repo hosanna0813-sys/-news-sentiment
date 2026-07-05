@@ -44,7 +44,7 @@
         <details>
           <summary>正文{% if not it.body_text %}（尚無正文）{% endif %}</summary>
           {% if it.body_text %}
-            <div class="body-full">{{ it.body_text }}</div>
+            <div class="body-full">{{ body_html_by_row_id.get(it.row_id, it.body_text) | safe }}</div>
           {% endif %}
         </details>
       </td>
