@@ -87,12 +87,28 @@ def build_web_flow(client_id: str, client_secret: str, redirect_uri: str):
 
 def complete_web_flow(flow, authorization_response: str) -> None:
     """在 OAuth callback 路由呼叫：以完整的 callback URL（含 code/state 參數）
-    換取 token 並儲存憑證。"""
+    換取 token 並儲存憑證。
+
+    儲存這步（save_gmail_credentials）以前漏包在 try/except 內，一旦儲存失敗
+    （例如 keyring 無可用 backend 又寫檔失敗）會以未預期例外的形式往上拋，
+    造成呼叫端的 GmailAuthError 攔截完全沒接到、畫面上什麼提示都不顯示，
+    只留一個「尚未連接」的假象。現在整段（換 token + 存憑證 + 立即讀回驗證）
+    都包在同一個 try/except 內，任何失敗都會轉成有意義的 GmailAuthError
+    訊息，並完整記錄到 log 供排查。"""
     try:
         flow.fetch_token(authorization_response=authorization_response)
+        logger.info(f"Gmail OAuth 換取 token 成功（scopes={flow.credentials.scopes}）")
+        save_gmail_credentials(flow.credentials.to_json())
     except Exception as e:
+        logger.exception("Gmail OAuth web flow 失敗（fetch_token 或儲存憑證階段）")
         raise GmailAuthError(f"OAuth 授權失敗：{e}") from e
-    save_gmail_credentials(flow.credentials.to_json())
+
+    # 立即讀回驗證：儲存「看似」成功，但如果讀回失敗（例如序列化格式問題），
+    # 使用者應該馬上知道，而不是等下次匯入才發現「尚未連接」。
+    if get_valid_credentials() is None:
+        logger.error("Gmail 憑證已寫入，但立即讀回驗證失敗（get_valid_credentials 回傳 None）")
+        raise GmailAuthError("憑證已寫入但讀回驗證失敗，請查看伺服器 log 並重試一次")
+
     logger.info("Gmail OAuth 授權完成並已儲存憑證（web flow）")
 
 

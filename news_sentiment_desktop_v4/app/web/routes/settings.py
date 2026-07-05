@@ -14,6 +14,9 @@ from app.services.gmail.gmail_auth import (
     build_web_flow, complete_web_flow, get_valid_credentials, GmailAuthError,
 )
 from app.utils.secure_key_store import mask_api_key
+from app.utils.logging_setup import get_logger
+
+logger = get_logger("web_settings")
 
 settings_bp = Blueprint("settings", __name__)
 
@@ -73,4 +76,10 @@ def gmail_oauth_callback():
         flash("Gmail 已成功連接", "success")
     except GmailAuthError as e:
         flash(f"Gmail 連接失敗：{e}", "error")
+    except Exception as e:
+        # 任何非預期的例外（不只是 GmailAuthError）都要轉成看得到的錯誤訊息並
+        # 完整記錄，不能讓使用者停在「畫面正常跳轉、但什麼提示都沒有、連接狀態
+        # 卻仍是尚未連接」的無聲失敗狀態。
+        logger.exception("Gmail OAuth callback 發生未預期例外")
+        flash(f"Gmail 連接發生未預期錯誤：{e}", "error")
     return redirect(url_for("settings.index"))
