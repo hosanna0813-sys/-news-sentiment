@@ -5,6 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}新聞輿情彙整{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+  {#
+    pollJob() 的定義刻意放在 <head>（而不是 </main> 之後）：retention.html／
+    clustering.html／scraping.html 都是在 {% block content %}（也就是 <main>
+    內、位於文件中較早的位置）用 <script>pollJob("{{ job_id }}");</script>
+    直接呼叫它。瀏覽器依文件順序逐一執行 inline <script>，如果函式定義放在
+    content 區塊「之後」，呼叫當下函式還不存在，會丟出
+    ReferenceError: pollJob is not defined（該行 script 直接中止，且沒有
+    任何畫面上看得到的提示）——這正是先前「進度條永遠停在處理中」的真正
+    原因：背景工作其實在伺服器端都正常跑完，只是瀏覽器端的輪詢從來沒有真的
+    執行過。放在 <head> 保證瀏覽器開始解析 <body> 之前，這個函式就已經是
+    全域可呼叫的，不管 content 區塊在文件的哪個位置呼叫都沒問題。
+  #}
+  function pollJob(jobId, onDone) {
+    const bar = document.getElementById("job-progress");
+    const label = document.getElementById("job-progress-label");
+    if (label) label.textContent = "讀取進度中...";
+
+    const finishTick = (data) => {
+      if (data.status === "failed") {
+        // 停止輪詢但不重新整理頁面，讓失敗訊息（例如匯入失敗的原因）留在畫面上，
+        // 不要一秒後又被整頁重載蓋掉；失敗狀態改成醒目的紅色警示樣式，避免
+        // 訊息平淡地混在一般進度文字裡被忽略、誤以為只是卡住。
+        if (label) label.classList.add("progress-failed");
+        if (bar) bar.classList.add("progress-failed");
+        return;
+      }
+      if (data.status === "completed" || data.status === "cancelled") {
+        if (onDone) onDone();
+        else window.location.href = window.location.pathname;
+        return;
+      }
+      setTimeout(tick, 1500);
+    };
+
+    const tick = () => {
+      fetch(`/jobs/${jobId}/status`).then(r => r.json()).then(data => {
+        if (data.error) {
+          // 查不到這個 job_id（例如工作紀錄剛好被清除）也要讓使用者看到明確狀態，
+          // 不能靜默不再更新、讓畫面卡在「處理中」的假象。
+          if (label) label.textContent = "查無此工作進度，可能已完成或已被清除，請重新整理頁面";
+          return;
+        }
+        const total = data.total_items || 1;
+        const pct = Math.round((data.progress_current / total) * 100);
+        if (bar) bar.style.width = pct + "%";
+
+        // 「一鍵完成」工作（job_type=pipeline）用 params.stage_label 顯示目前跑到
+        // 哪個階段（匯入/抓正文/留用初判/議題分群）；該階段若有對應的批次子工作
+        // （params.sub_job_id），再多打一次請求秀出「第幾批/共幾批、成功/失敗
+        // 筆數」，讓同一句階段名稱不會從頭到尾都長一樣、看起來像卡住。
+        // 一般批次工作（非 pipeline）沒有這兩個欄位，維持原本的數字進度顯示。
+        if (data.params && data.params.stage_label) {
+          const stageText = `階段 ${data.progress_current}/${data.params.stage_count}：` +
+            `${data.params.stage_label}`;
+          if (data.params.sub_job_id) {
+            fetch(`/jobs/${data.params.sub_job_id}/status`).then(r2 => r2.json()).then(subData => {
+              if (label) {
+                label.textContent = subData.error ? stageText : `${stageText}` +
+                  `（第 ${subData.progress_current}/${subData.total_items} 則，` +
+                  `成功 ${subData.success_count}、失敗 ${subData.failed_count}）`;
+              }
+              finishTick(data);
+            }).catch(() => {
+              if (label) label.textContent = stageText;
+              finishTick(data);
+            });
+            return;
+          }
+          if (label) label.textContent = stageText;
+        } else if (label) {
+          label.textContent = `${data.progress_current}/${data.total_items}` +
+            `（成功 ${data.success_count}、失敗 ${data.failed_count}、略過 ${data.skipped_count}）— ${data.status}`;
+        }
+        finishTick(data);
+      }).catch(() => setTimeout(tick, 5000));
+    };
+    tick();
+  }
+  </script>
 </head>
 <body>
 {% if session.get('authenticated') %}
@@ -34,74 +114,6 @@
   {% block content %}{% endblock %}
 </main>
 
-<script>
-function pollJob(jobId, onDone) {
-  const bar = document.getElementById("job-progress");
-  const label = document.getElementById("job-progress-label");
-  if (label) label.textContent = "讀取進度中...";
-
-  const finishTick = (data) => {
-    if (data.status === "failed") {
-      // 停止輪詢但不重新整理頁面，讓失敗訊息（例如匯入失敗的原因）留在畫面上，
-      // 不要一秒後又被整頁重載蓋掉；失敗狀態改成醒目的紅色警示樣式，避免
-      // 訊息平淡地混在一般進度文字裡被忽略、誤以為只是卡住。
-      if (label) label.classList.add("progress-failed");
-      if (bar) bar.classList.add("progress-failed");
-      return;
-    }
-    if (data.status === "completed" || data.status === "cancelled") {
-      if (onDone) onDone();
-      else window.location.href = window.location.pathname;
-      return;
-    }
-    setTimeout(tick, 1500);
-  };
-
-  const tick = () => {
-    fetch(`/jobs/${jobId}/status`).then(r => r.json()).then(data => {
-      if (data.error) {
-        // 查不到這個 job_id（例如工作紀錄剛好被清除）也要讓使用者看到明確狀態，
-        // 不能靜默不再更新、讓畫面卡在「處理中」的假象。
-        if (label) label.textContent = "查無此工作進度，可能已完成或已被清除，請重新整理頁面";
-        return;
-      }
-      const total = data.total_items || 1;
-      const pct = Math.round((data.progress_current / total) * 100);
-      if (bar) bar.style.width = pct + "%";
-
-      // 「一鍵完成」工作（job_type=pipeline）用 params.stage_label 顯示目前跑到
-      // 哪個階段（匯入/抓正文/留用初判/議題分群）；該階段若有對應的批次子工作
-      // （params.sub_job_id），再多打一次請求秀出「第幾批/共幾批、成功/失敗
-      // 筆數」，讓同一句階段名稱不會從頭到尾都長一樣、看起來像卡住。
-      // 一般批次工作（非 pipeline）沒有這兩個欄位，維持原本的數字進度顯示。
-      if (data.params && data.params.stage_label) {
-        const stageText = `階段 ${data.progress_current}/${data.params.stage_count}：` +
-          `${data.params.stage_label}`;
-        if (data.params.sub_job_id) {
-          fetch(`/jobs/${data.params.sub_job_id}/status`).then(r2 => r2.json()).then(subData => {
-            if (label) {
-              label.textContent = subData.error ? stageText : `${stageText}` +
-                `（第 ${subData.progress_current}/${subData.total_items} 則，` +
-                `成功 ${subData.success_count}、失敗 ${subData.failed_count}）`;
-            }
-            finishTick(data);
-          }).catch(() => {
-            if (label) label.textContent = stageText;
-            finishTick(data);
-          });
-          return;
-        }
-        if (label) label.textContent = stageText;
-      } else if (label) {
-        label.textContent = `${data.progress_current}/${data.total_items}` +
-          `（成功 ${data.success_count}、失敗 ${data.failed_count}、略過 ${data.skipped_count}）— ${data.status}`;
-      }
-      finishTick(data);
-    }).catch(() => setTimeout(tick, 5000));
-  };
-  tick();
-}
-</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
