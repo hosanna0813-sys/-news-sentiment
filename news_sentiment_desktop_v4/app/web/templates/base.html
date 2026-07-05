@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}新聞輿情彙整{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if session.get('authenticated') %}
+<nav class="topnav">
+  <a href="{{ url_for('dashboard.index') }}" class="brand">新聞輿情彙整</a>
+  <a href="{{ url_for('import_gmail.index') }}">1. 匯入</a>
+  <a href="{{ url_for('scraping.index') }}">2. 抓正文</a>
+  <a href="{{ url_for('retention.index') }}">3. 留用初判</a>
+  <a href="{{ url_for('clustering.index') }}">4. 議題分群</a>
+  <a href="{{ url_for('export.index') }}">5. 匯出</a>
+  <a href="{{ url_for('settings.index') }}">設定</a>
+  <a href="{{ url_for('login.logout') }}" class="logout">登出</a>
+</nav>
+{% endif %}
+
+<main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-list">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+function pollJob(jobId, onDone) {
+  const bar = document.getElementById("job-progress");
+  const label = document.getElementById("job-progress-label");
+  const tick = () => {
+    fetch(`/jobs/${jobId}/status`).then(r => r.json()).then(data => {
+      if (data.error) return;
+      const total = data.total_items || 1;
+      const pct = Math.round((data.progress_current / total) * 100);
+      if (bar) bar.style.width = pct + "%";
+      if (label) {
+        label.textContent = `${data.progress_current}/${data.total_items}` +
+          `（成功 ${data.success_count}、失敗 ${data.failed_count}、略過 ${data.skipped_count}）— ${data.status}`;
+      }
+      if (data.status === "completed" || data.status === "cancelled") {
+        if (onDone) onDone();
+        else window.location.href = window.location.pathname;
+        return;
+      }
+      setTimeout(tick, 3000);
+    }).catch(() => setTimeout(tick, 5000));
+  };
+  tick();
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

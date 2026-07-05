@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}匯出 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<h1>5. 匯出新聞議題清單</h1>
+<p>目前共 {{ topic_count }} 個議題，涵蓋 {{ news_count }} 則新聞。</p>
+<a href="{{ url_for('export.download') }}" class="btn">下載 Word 議題清單</a>
+{% endblock %}

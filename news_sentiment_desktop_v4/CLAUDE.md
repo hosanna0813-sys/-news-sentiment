@@ -119,6 +119,41 @@ API key is stored via `keyring` (Windows Credential Manager / DPAPI), never in a
 file. `app/repositories/db.py` uses `schema_version` + `CREATE TABLE IF NOT EXISTS` / `ALTER` only
 — migrations never `DROP` existing tables; add new migrations in `_run_migrations()`.
 
+## Web mode (`app/web/`)
+
+A second UI — Flask instead of PySide6 — for teams to share one deployment (e.g. on
+Render; see README "網頁版部署到 Render"). Scope is intentionally narrower than the
+desktop app: Gmail import → scrape bodies → AI retention triage → AI clustering +
+manual adjustment → download a simple Word topic list (`word_exporter.export_
+simple_topic_list`). No summarization/stance analysis, no background scheduling —
+every step is a manual button click.
+
+It shares the same `app/services`/`app/repositories`/`app/models`/`app/prompts`
+layer as the desktop app (same SQLite DB, same `AppContext`, same AI prompts/tool
+schemas) — no business logic is duplicated. What differs, and why:
+
+- **UI**: Flask blueprints/Jinja templates (`app/web/routes/`, `app/web/templates/`)
+  instead of PySide6 pages.
+- **Gmail OAuth**: cloud containers have no browser, so `app/services/gmail/
+  gmail_auth.py` gained `build_web_flow`/`complete_web_flow` (standard "Web
+  application" authorization-code flow with a fixed redirect_uri) alongside the
+  existing `run_oauth_flow` (desktop's `InstalledAppFlow.run_local_server()`,
+  untouched).
+- **Batch execution**: `app/web/job_runner.py` is a plain-`threading.Thread` port of
+  `app/workers/batch_job_worker.py`'s sequential path — same `JobRepository`/
+  `BatchRepository` tables for progress, no QThread/Signal dependency. The web
+  retention/clustering routes re-implement the desktop workers' batching/prompt
+  orchestration as plain functions calling the same `retention_service`/
+  `clustering_service` functions (no resume-across-restart support — every run is
+  a fresh job, matching the "click once a day" usage pattern).
+- **Data directory**: `app/utils/paths.py::get_app_data_dir()` checks
+  `NEWS_SENTIMENT_DATA_DIR` first (for a mounted cloud disk) before falling back to
+  the existing Windows APPDATA / `~/.news_sentiment_desktop_v4` logic.
+- **Secrets**: `secure_key_store.load_api_key()` checks the `ANTHROPIC_API_KEY` env
+  var before falling back to keyring; Gmail OAuth client id/secret and a shared
+  login password (`app/web/auth.py`, no per-user accounts) come from env vars too
+  (`GMAIL_OAUTH_CLIENT_ID`/`_SECRET`, `WEB_SHARED_PASSWORD`).
+
 ## Known incomplete/simplified areas (per README, not hidden)
 
 - Message Batches API: settings/data model exist, but `ModelGateway` only implements the

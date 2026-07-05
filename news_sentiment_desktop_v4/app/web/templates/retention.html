@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}留用初判 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<h1>3. 留用初判</h1>
+
+{% if job_id %}
+  <div class="progress-wrap">
+    <div class="progress-bar"><div id="job-progress" class="progress-bar-fill"></div></div>
+    <p id="job-progress-label">處理中...</p>
+  </div>
+  <script>pollJob("{{ job_id }}");</script>
+{% else %}
+  <form method="post" action="{{ url_for('retention.run') }}">
+    <button type="submit">執行 AI 留用初判</button>
+  </form>
+{% endif %}
+
+<table class="data-table">
+  <thead>
+    <tr><th>標題</th><th>來源</th><th>時間</th><th>AI 建議</th><th>星等</th><th>留用</th></tr>
+  </thead>
+  <tbody>
+    {% for it in items %}
+    <tr class="{{ 'row-not-retained' if not it.retained }}">
+      <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">{{ it.title }}</a>{% else %}{{ it.title }}{% endif %}</td>
+      <td>{{ it.source }}</td>
+      <td>{{ it.published_at }}</td>
+      <td>{{ it.retention_status }}</td>
+      <td>{{ '★' * it.priority_stars if it.priority_stars else '-' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('retention.override') }}" class="inline-form">
+          <input type="hidden" name="row_id" value="{{ it.row_id }}">
+          <input type="checkbox" name="retained" onchange="this.form.submit()" {{ 'checked' if it.retained }}>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

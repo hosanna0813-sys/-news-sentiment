@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}匯入 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<h1>1. 從 Gmail 匯入新聞</h1>
+
+{% if not gmail_configured %}
+<p class="flash flash-warn">尚未設定寄件者信箱，請先到<a href="{{ url_for('settings.index') }}">設定頁</a>填寫。</p>
+{% endif %}
+
+<form method="post">
+  <label>起始時間<br><input type="datetime-local" name="start_dt" required></label>
+  <label>結束時間<br><input type="datetime-local" name="end_dt" required></label>
+  <button type="submit" {{ 'disabled' if not gmail_configured }}>從 Gmail 抓取</button>
+</form>
+
+{% if result_summary %}
+<div class="result-box">
+  <p>{{ result_summary.file_name }}</p>
+  <p>共 {{ result_summary.total_rows }} 筆，重複 {{ result_summary.duplicate_rows }} 筆</p>
+</div>
+{% endif %}
+
+<p>目前資料庫共有 {{ news_count }} 則新聞。</p>
+{% endblock %}
