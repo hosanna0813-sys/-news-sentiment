@@ -60,6 +60,17 @@ class JobRepository:
         cur = self.conn.execute("SELECT * FROM jobs ORDER BY created_at DESC")
         return [JobRecord.from_row(dict(r)) for r in cur.fetchall()]
 
+    def mark_stale_running_jobs_as_failed(self) -> int:
+        """啟動時清理用：把上次程序意外中止（例如雲端部署重新啟動）時卡在
+        running 的工作標記為 failed，回傳受影響筆數。只有網頁版會在啟動時
+        呼叫這個方法——桌面版的 running 工作設計上本來就要能在下次啟動後
+        續跑（BatchJobWorker 的 resume_job_id 機制），不能被這裡誤判成失敗。"""
+        with self.conn:
+            cur = self.conn.execute(
+                "UPDATE jobs SET status='failed', finished_at=? WHERE status='running'",
+                (time.time(),))
+        return cur.rowcount
+
     def delete_all(self) -> None:
         with self.conn:
             self.conn.execute("DELETE FROM jobs")

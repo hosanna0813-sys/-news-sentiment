@@ -212,7 +212,8 @@ pytest tests -v
 ### 本機測試網頁版
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-web.txt   # 只測網頁版用這個較輕量的清單即可
+                                        # （已裝過桌面版 requirements.txt 也可以，是超集）
 export WEB_SHARED_PASSWORD=your-password
 export FLASK_SECRET_KEY=any-random-string
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -231,9 +232,13 @@ python run_web.py
    Authorized redirect URI 填：`https://<你的 Render 服務網址>/gmail/oauth/callback`
    （服務網址要等下一步 Render 建立服務後才知道，可以先用預留網址建立、之後
    到 Google Cloud Console 補上正確網址）。
-2. **Render**：用本專案根目錄的 `render.yaml`（Blueprint）建立服務
-   （New → Blueprint，指向這個 GitHub repo）。Render 會自動讀取
-   `render.yaml`，建立一個掛了 1GB 持久磁碟（`/var/data`）的 web service。
+2. **Render**：用 `render.yaml`（Blueprint）建立服務（New → Blueprint，指向
+   這個 GitHub repo）。注意 `render.yaml` 放在 `news_sentiment_desktop_v4/`
+   子目錄下（repo 根目錄只有這個資料夾），render.yaml 內已設定
+   `rootDir: news_sentiment_desktop_v4`，build/start 指令都會在該子目錄下
+   執行；若 Render 介面要求指定 render.yaml 路徑，選
+   `news_sentiment_desktop_v4/render.yaml`。Render 會建立一個掛了 1GB
+   持久磁碟（`/var/data`）的 web service。
 3. 在 Render Dashboard 的環境變數頁面填入（`render.yaml` 裡標示
    `sync: false` 的都需要手動填）：
    - `ANTHROPIC_API_KEY`
@@ -242,15 +247,64 @@ python run_web.py
    - `FLASK_SECRET_KEY` 由 Render 自動產生，不用手動填
 4. 部署完成後，打開服務網址 → 輸入共用密碼登入 → 到「設定」頁按「連接
    Gmail」完成一次性 OAuth 授權、填寫寄件者信箱與主旨關鍵字 → 之後每天
-   上網站依「匯入 → 抓正文 → 留用初判 → 議題分群 → 匯出」順序操作即可。
+   上首頁按「一鍵完成」（見下）或依序手動操作「匯入 → 抓正文 → 留用初判 →
+   議題分群 → 匯出」。
+
+### 一鍵完成
+
+首頁提供「一鍵完成」表單（起訖時間 + 一個按鈕），背景依序自動跑完匯入→抓
+正文→留用初判→議題分群，跑完直接導向議題分群頁做人工調整，不必依序手動點
+四個步驟。進度條會顯示目前跑到哪個階段；任一階段失敗（例如 Gmail 找不到符
+合條件的信件）會停在該階段並顯示原因，不會靜默卡住。
+
+### 議題／關鍵字彙整表（提升 AI 判斷精準度）
+
+設定頁新增一個文字區塊，可貼上業務關注議題與關鍵字對照表（可直接沿用
+KEYPO 的布林檢索語法 `|`／`&`／`~N`）。這份清單不會在程式端做關鍵字比對
+解析——來源常有人工謄寫的不平衡括號、不一致分隔符號，硬解析容易悄悄出錯；
+而是原文注入留用初判與議題分群的 AI prompt，讓模型參考語意判斷，兩者共用
+同一份設定（`app/web/routes/retention.py::build_keyword_context()`）。
+
+### 議題分群頁的「未留用新聞」欄位
+
+分群頁左側除了「未分類新聞」，另外還有一欄「未留用新聞」（AI 或人工判斷為
+不留用者），可直接拖曳搶救到未分類或某個議題（拖曳時會自動把該則新聞的
+留用狀態改回留用），不必先跳回留用初判頁勾選再回來分群。反向拖到「未留用」
+欄位則會標記為人工不留用並移出所屬議題。
+
+### 時區
+
+匯入頁與「一鍵完成」表單的起訖時間輸入框，一律當成**台灣時間（Asia/Taipei）**
+解讀（`app/web/routes/import_gmail.py::parse_taipei_datetime()`）。這是必要的：
+桌面版跑在使用者自己的電腦上，系統時區本來就是台灣，naive 時間直接當地時間
+用沒問題；但網頁版的 Render 伺服器預設多半是 UTC，同一組時間字串如果不明確
+標記時區，會被伺服器自己的系統時區解讀，跟操作者實際想要的台灣時間差 8
+小時，導致 Gmail 搜尋區間整個偏移、篩不到信件（曾實際發生：選了「07:17～
+11:17」，log 卻顯示搜尋不到任何信件，就是這個原因）。已修正為明確標記時區，
+不依賴伺服器系統時區設定是否剛好也是台灣時間。
 
 ### 已知限制（有意簡化，非疏漏）
 
 - 只支援單一 instance（`-w 1`）：SQLite 檔案鎖 + 單一持久磁碟不支援水平擴展，
   小團隊內部工具用途足夠。
 - 不做 Playwright 瀏覽器渲染抓取（雲端 instance 較輕量），只做
-  `requests + BeautifulSoup` 一段式抓取。
+  `requests + BeautifulSoup` 一段式抓取——這也是為什麼部署用
+  `requirements-web.txt`（不含 PySide6/Playwright/GNE/PyInstaller）而不是
+  桌面版的完整 `requirements.txt`：Render 的無頭建置環境沒有這些套件需要的
+  GUI/瀏覽器系統函式庫，硬裝只會讓 build 失敗。
 - 只有一組共用密碼，沒有個別帳號與操作紀錄歸屬。
+
+### Build 失敗排查
+
+- **`Exited with status 1 while building your code`**：先看 Render 的 build log
+  是哪個套件裝到一半失敗（通常是誤用了完整的 `requirements.txt`，或
+  `render.yaml` 沒有生效導致用了預設的 build 指令）。確認 Render 服務設定裡
+  的 Build Command 是 `pip install -r requirements-web.txt`（不是
+  `requirements.txt`），且 Root Directory／`rootDir` 有指到
+  `news_sentiment_desktop_v4`。若是舊的 Blueprint（在 `rootDir` 加入前建立
+  的），到 Render Dashboard 手動把 Root Directory 改成
+  `news_sentiment_desktop_v4`，或刪掉服務用最新的 `render.yaml` 重新建立
+  Blueprint。
 
 ---
 

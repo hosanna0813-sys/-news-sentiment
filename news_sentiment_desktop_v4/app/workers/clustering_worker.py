@@ -23,6 +23,7 @@ from app.models.topic import Topic
 from app.repositories.news_repository import NewsRepository
 from app.repositories.topic_repository import TopicRepository
 from app.repositories.settings_repository import PromptRepository
+from app.repositories.feedback_repository import FeedbackRepository
 from app.services.ai.model_gateway import ModelGateway, GatewayError
 from app.services.clustering.clustering_service import (
     split_insufficient_body, bucket_candidates, cluster_batch, merge_candidate_topics,
@@ -44,7 +45,7 @@ class ClusteringWorker(QThread):
 
     def __init__(self, gateway: ModelGateway, news_repo: NewsRepository, topic_repo: TopicRepository,
                  prompt_repo: PromptRepository, bucket_size: int = 15,
-                 incremental: bool = False, feedback_repo=None, parent=None):
+                 incremental: bool = False, feedback_repo=None, db_path=None, parent=None):
         super().__init__(parent)
         self.gateway = gateway
         self.news_repo = news_repo
@@ -53,6 +54,7 @@ class ClusteringWorker(QThread):
         self.bucket_size = bucket_size
         self.incremental = incremental
         self.feedback_repo = feedback_repo
+        self.db_path = db_path
         self._cancel = False
 
     def request_cancel(self) -> None:
@@ -97,6 +99,15 @@ class ClusteringWorker(QThread):
         return existing
 
     def run(self) -> None:
+        # 在本 QThread 執行緒內重新建立 repo（thread-local 連線），不沿用建構子
+        # 收到、在主執行緒建立的 repo 物件——sqlite3 連線物件不可跨執行緒共用，
+        # 否則主執行緒同時操作 UI 時可能與本執行緒的寫入互相干擾（比照
+        # retention_worker.py 的既有慣例）。
+        self.news_repo = NewsRepository(self.db_path)
+        self.topic_repo = TopicRepository(self.db_path)
+        self.prompt_repo = PromptRepository(self.db_path)
+        if self.feedback_repo is not None:
+            self.feedback_repo = FeedbackRepository(self.db_path)
         try:
             all_items = self.news_repo.list_retained_with_body()
 

@@ -1,0 +1,32 @@
+# News Sentiment Web (Claude Edition) - Python requirements for the Flask
+# cloud deployment (Render), which never imports app.workers.* (PySide6/QThread)
+# or the Playwright browser-rendering scraper fallback.
+#
+# Kept deliberately separate from requirements.txt: PySide6/Playwright/GNE need
+# system-level GUI/browser libraries that a headless Render build container
+# does not have, and pulling them in unnecessarily is what breaks the build.
+# NOTE: keep this file ASCII-only (see requirements.txt for why).
+
+# ---- Web framework ----
+Flask>=3.0.0
+gunicorn>=21.2.0
+
+# ---- Anthropic official SDK ----
+anthropic>=0.40.0
+
+# ---- Article scraping (requests+BeautifulSoup only, no browser rendering) ----
+requests>=2.31.0
+beautifulsoup4>=4.12.3
+lxml>=5.1.0
+truststore>=0.8.0
+
+# ---- Word export ----
+python-docx>=1.1.0
+
+# ---- Secure credential storage fallback (optional; env vars take priority) ----
+keyring>=24.3.0
+
+# ---- Gmail news import (OAuth, read-only scope) ----
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0

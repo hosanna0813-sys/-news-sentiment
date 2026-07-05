@@ -23,6 +23,7 @@ from app.controllers.app_context import AppContext
 from app.models.topic import Topic
 from app.utils.text_utils import new_id
 from app.services.feedback.feedback_service import log_feedback
+from app.services.clustering.clustering_service import assign_news_to_topic, unassign_news_from_topic
 from app.ui.widgets.drop_list_widget import DropListWidget
 
 ROW_ID_ROLE = Qt.UserRole + 1
@@ -210,13 +211,8 @@ class TopicAdjustmentPage(QWidget):
 
     def _on_dropped_to_unclassified(self, row_ids: List[str]):
         """新聞被拖回「未分類」清單：清除議題歸屬並記錄回饋"""
-        for rid in row_ids:
-            it = self.ctx.news_repo.get(rid)
-            old_topic = it.final_topic_name if it else ""
-            self.ctx.news_repo.update_fields(rid, {"final_topic_id": "", "final_topic_name": ""})
-            log_feedback(self.ctx.feedback_repo, batch_id="", entity_type="clustering", entity_id=rid,
-                         ai_original_value=old_topic, human_final_value="（不納入任何議題）",
-                         action="human_drag_unassign", operator="user")
+        unassign_news_from_topic(self.ctx.news_repo, self.ctx.feedback_repo, row_ids,
+                                  action="human_drag_unassign")
 
     # ---------- 預覽 / 正文編輯 ----------
     def _on_item_selected_preview(self):
@@ -314,13 +310,8 @@ class TopicAdjustmentPage(QWidget):
         row_ids = self._selected_row_ids(self.member_list)
         if not row_ids:
             return
-        for rid in row_ids:
-            it = self.ctx.news_repo.get(rid)
-            old_topic = it.final_topic_name if it else ""
-            self.ctx.news_repo.update_fields(rid, {"final_topic_id": "", "final_topic_name": ""})
-            log_feedback(self.ctx.feedback_repo, batch_id="", entity_type="clustering", entity_id=rid,
-                         ai_original_value=old_topic, human_final_value="（不納入任何議題）",
-                         action="human_unassign", operator="user")
+        unassign_news_from_topic(self.ctx.news_repo, self.ctx.feedback_repo, row_ids,
+                                  action="human_unassign")
         self.refresh_all()
 
     def _on_split_topic(self):
@@ -380,13 +371,5 @@ class TopicAdjustmentPage(QWidget):
         self.refresh_all()
 
     def _assign_news_to_topic(self, row_ids: List[str], topic_id: str, topic_name: str, action: str):
-        for rid in row_ids:
-            it = self.ctx.news_repo.get(rid)
-            old_topic = it.final_topic_name if it else ""
-            self.ctx.news_repo.update_fields(rid, {
-                "final_topic_id": topic_id, "final_topic_name": topic_name,
-                "clustering_confidence": 0,  # 人工確認過的歸屬，清除低信心標記
-            })
-            log_feedback(self.ctx.feedback_repo, batch_id="", entity_type="clustering", entity_id=rid,
-                         ai_original_value=old_topic, human_final_value=topic_name,
-                         action=action, operator="user")
+        assign_news_to_topic(self.ctx.news_repo, self.ctx.feedback_repo, row_ids, topic_id,
+                              topic_name, action)

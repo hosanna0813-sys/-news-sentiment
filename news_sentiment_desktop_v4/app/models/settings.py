@@ -97,6 +97,12 @@ class AppSettings:
     scraping: ScrapingSettings = field(default_factory=ScrapingSettings)
     word_export: WordExportSettings = field(default_factory=WordExportSettings)
     gmail: GmailSettings = field(default_factory=GmailSettings)
+    # 議題／關鍵字對照表（網頁版新增）：使用者自訂的業務關注議題與關鍵字清單
+    # （純文字，可用 KEYPO 慣用的布林語法 | & ~N），作為留用初判／議題分群
+    # AI 判斷時的參考資料，不做程式端的關鍵字比對解析——來源文字常有不平衡
+    # 括號、不一致的分隔符號等人工謄寫的雜訊，硬解析容易悄悄出錯；改為原文
+    # 注入 AI prompt，讓模型自行理解語意反而更穩妥。
+    keyword_taxonomy: str = ""
     task_models: list = field(default_factory=lambda: [asdict(m) for m in DEFAULT_TASK_MODELS])
 
     def to_dict(self) -> dict:

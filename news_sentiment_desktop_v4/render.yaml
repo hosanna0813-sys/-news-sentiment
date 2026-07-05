@@ -7,7 +7,11 @@ services:
     name: news-sentiment-web
     env: python
     plan: starter
-    buildCommand: pip install -r requirements.txt
+    # 這個 repo 的實際專案在 news_sentiment_desktop_v4/ 子目錄下（repo 根目錄
+    # 只有這一個資料夾），rootDir 讓 build/start 指令都在該子目錄下執行，
+    # 不必依賴 Render Dashboard 手動設定 Root Directory。
+    rootDir: news_sentiment_desktop_v4
+    buildCommand: pip install -r requirements-web.txt
     startCommand: gunicorn -w 1 --timeout 120 "app.web.server:create_app()"
     envVars:
       - key: ANTHROPIC_API_KEY

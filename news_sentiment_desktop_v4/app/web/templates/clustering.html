@@ -1,82 +1,365 @@
 {% extends "base.html" %}
 {% block title %}議題分群 — 新聞輿情彙整{% endblock %}
 {% block content %}
-<h1>4. 議題分群與人工調整</h1>
+{% set ns = namespace(topic_news_count=0) %}
+{% for t in topics %}{% set ns.topic_news_count = ns.topic_news_count + news_by_topic.get(t.topic_id, [])|length %}{% endfor %}
+{% set total_news_count = unclustered|length + not_retained|length + ns.topic_news_count %}
 
-{% if job_id %}
-  <div class="progress-wrap">
-    <div class="progress-bar"><div id="job-progress" class="progress-bar-fill"></div></div>
-    <p id="job-progress-label">處理中...</p>
+<div class="cluster-page">
+  <div class="cluster-header">
+    <h1>議題分群與人工調整</h1>
   </div>
-  <script>pollJob("{{ job_id }}");</script>
-{% else %}
-  <form method="post" action="{{ url_for('clustering.run') }}">
-    <label><input type="checkbox" name="incremental" checked> 增量分群（只處理尚未歸入議題的新聞，維持既有議題結構）</label>
-    <button type="submit">執行 AI 議題分群</button>
-  </form>
-{% endif %}
 
-{% macro move_form(row_id) %}
-<form method="post" action="{{ url_for('clustering.move') }}" class="inline-form move-form">
-  <input type="hidden" name="row_id" value="{{ row_id }}">
-  <select name="target" onchange="this.nextElementSibling.style.display = (this.value==='__new__') ? 'inline-block' : 'none'">
-    <option value="__unassign__">— 標記不納入 —</option>
-    <option value="__new__">➕ 新議題...</option>
-    {% for t in topics %}
-      <option value="{{ t.topic_id }}">{{ t.topic_name }}</option>
-    {% endfor %}
-  </select>
-  <input type="text" name="new_topic_name" placeholder="新議題名稱" style="display:none">
-  <button type="submit">移動</button>
-</form>
-{% endmacro %}
+  {% if job_id %}
+    <div class="progress-wrap">
+      <div class="progress-bar"><div id="job-progress" class="progress-bar-fill"></div></div>
+      <p id="job-progress-label">處理中...</p>
+    </div>
+    <script>pollJob("{{ job_id }}");</script>
+    <p class="muted">（若確定沒有工作正在執行卻一直卡在這裡，可能是上次部署／重啟時工作意外中斷，下面仍可以直接再按一次執行。）</p>
+  {% endif %}
 
-<h2>未分類新聞（{{ unclustered|length }} 則）</h2>
-<table class="data-table">
-  <tbody>
-    {% for it in unclustered %}
-    <tr>
-      <td>{{ it.title }}（{{ it.source }}）</td>
-      <td>{{ move_form(it.row_id) }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<h2>議題（{{ topics|length }} 個）</h2>
-{% for t in topics %}
-<div class="topic-card">
-  <div class="topic-header">
-    <form method="post" action="{{ url_for('clustering.rename') }}" class="inline-form">
-      <input type="hidden" name="topic_id" value="{{ t.topic_id }}">
-      <input type="text" name="new_name" value="{{ t.topic_name }}">
-      <button type="submit">改名</button>
+  <div class="stats-action-bar">
+    <form method="post" action="{{ url_for('clustering.run') }}">
+      <input type="hidden" name="incremental" value="on">
+      <button type="submit" class="primary-button">✨ AI 建議分群</button>
     </form>
-    <form method="post" action="{{ url_for('clustering.merge') }}" class="inline-form">
-      <input type="hidden" name="source_topic_id" value="{{ t.topic_id }}">
-      合併到：
-      <select name="target_topic_id">
-        {% for other in topics if other.topic_id != t.topic_id %}
-          <option value="{{ other.topic_id }}">{{ other.topic_name }}</option>
+
+    <div class="stat-cards-row">
+      <div class="stat-card-mini"><div class="stat-num">{{ total_news_count }}</div><div class="stat-label">全部新聞</div></div>
+      <div class="stat-card-mini"><div class="stat-num" id="selected-topic-count">—</div><div class="stat-label">選定議題</div></div>
+      <div class="stat-card-mini"><div class="stat-num">{{ unclustered|length }}</div><div class="stat-label">未分類</div></div>
+      <div class="stat-card-mini"><div class="stat-num">{{ not_retained|length }}</div><div class="stat-label">未留用</div></div>
+    </div>
+
+    <button type="button" id="apply-changes-btn" class="secondary-button" onclick="applyChanges()" disabled>套用變更</button>
+  </div>
+
+  {% macro news_card(it) %}
+  <div class="news-card" draggable="true" data-row-id="{{ it.row_id }}" ondragstart="onDragStart(event)">
+    <div class="news-card-body" onclick="showPreview('{{ it.row_id }}')">
+      <div class="news-card-title">{{ it.title }}</div>
+      <div class="news-card-meta muted">{{ it.source }}</div>
+    </div>
+    <div class="card-menu-wrap">
+      <button type="button" class="card-menu-btn" onclick="event.stopPropagation(); toggleCardMenu(this)">⋮</button>
+      <div class="dropdown-menu card-dropdown">
+        <button type="button" onclick="event.stopPropagation(); closeCardMenus(); cardMoveTo('{{ it.row_id }}', '__unassign__')">移至未分類</button>
+        <button type="button" onclick="event.stopPropagation(); closeCardMenus(); cardMoveTo('{{ it.row_id }}', '__not_retained__')">標記為未留用</button>
+        <select onclick="event.stopPropagation()" onchange="closeCardMenus(); cardMoveTo('{{ it.row_id }}', this.value); this.selectedIndex=0;">
+          <option value="" selected disabled>移至議題...</option>
+          {% for t in topics %}<option value="{{ t.topic_id }}">{{ t.topic_name }}</option>{% endfor %}
+        </select>
+        <button type="button" onclick="event.stopPropagation(); closeCardMenus(); viewOriginal('{{ it.row_id }}')">查看原文</button>
+      </div>
+    </div>
+  </div>
+  {% endmacro %}
+
+  <div class="workspace-grid cluster-board">
+    <div class="workspace-col pending-col">
+      <div class="col-header">
+        <h3>待審新聞</h3>
+      </div>
+      <input type="text" id="news-search" class="search-box" placeholder="搜尋標題或來源..." oninput="filterCards()">
+      <div class="tab-row">
+        <button type="button" class="tab-btn active" data-tab="unclustered" onclick="switchTab('unclustered')">未分類新聞（<span id="unclustered-count">{{ unclustered|length }}</span>）</button>
+        <button type="button" class="tab-btn" data-tab="not-retained" onclick="switchTab('not-retained')">未留用新聞（<span id="not-retained-count">{{ not_retained|length }}</span>）</button>
+      </div>
+      <div class="drop-zone" id="unclustered-list" ondragover="allowDrop(event)" ondrop="handleDrop(event, '__unassign__')">
+        {% for it in unclustered %}{{ news_card(it) }}{% endfor %}
+      </div>
+      <div class="drop-zone" id="not-retained-list" style="display:none" ondragover="allowDrop(event)" ondrop="handleDrop(event, '__not_retained__')">
+        {% for it in not_retained %}{{ news_card(it) }}{% endfor %}
+      </div>
+    </div>
+
+    <div class="workspace-col topic-col">
+      <div class="col-header">
+        <h3>目前議題</h3>
+      </div>
+      <div class="topic-selector-row">
+        <select id="topic-select" onchange="selectTopic(this.value)">
+          {% for t in topics %}
+            <option value="{{ t.topic_id }}" data-topic-name="{{ t.topic_name }}">
+              {{ t.topic_name }}（{{ news_by_topic.get(t.topic_id, [])|length }}）
+            </option>
+          {% endfor %}
+        </select>
+        <div class="topic-menu-wrap">
+          <button type="button" class="icon-btn" onclick="event.stopPropagation(); toggleTopicMenu()">⋮</button>
+          <div class="dropdown-menu topic-dropdown-menu" id="topic-dropdown-menu">
+            <button type="button" onclick="closeTopicMenu(); createTopic()">➕ 新增議題</button>
+            <form method="post" action="{{ url_for('clustering.rename') }}" class="inline-form menu-form">
+              <input type="hidden" name="topic_id" id="toolbar-rename-topic-id">
+              <input type="text" name="new_name" id="toolbar-rename-input" placeholder="✎ 議題名稱">
+              <button type="submit">改名</button>
+            </form>
+            <form method="post" action="{{ url_for('clustering.merge') }}" class="inline-form menu-form">
+              <input type="hidden" name="source_topic_id" id="toolbar-merge-source-id">
+              合併到：
+              <select name="target_topic_id" id="toolbar-merge-target"></select>
+              <button type="submit">合併</button>
+            </form>
+            <form method="post" action="{{ url_for('clustering.delete') }}" class="menu-form">
+              <input type="hidden" name="topic_id" id="toolbar-delete-topic-id">
+              <button type="submit" id="toolbar-delete-btn">🗑 刪除空議題</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div id="topic-zones">
+        {% for t in topics %}
+        <div class="drop-zone topic-members" id="topic-members-{{ t.topic_id }}" data-topic-id="{{ t.topic_id }}"
+             style="display:none" ondragover="allowDrop(event)" ondrop="handleDrop(event, '{{ t.topic_id }}')">
+          {% for it in news_by_topic.get(t.topic_id, []) %}{{ news_card(it) }}{% endfor %}
+          <div class="drop-hint">拖曳新聞卡片到這裡加入此議題</div>
+        </div>
         {% endfor %}
-      </select>
-      <button type="submit">合併</button>
-    </form>
-    <form method="post" action="{{ url_for('clustering.delete') }}" class="inline-form">
-      <input type="hidden" name="topic_id" value="{{ t.topic_id }}">
-      <button type="submit" {{ 'disabled' if news_by_topic.get(t.topic_id) }}>刪除空議題</button>
-    </form>
+      </div>
+      {% if not topics %}<p class="muted" id="no-topics-hint">尚無議題，請先執行 AI 議題分群，或用「⋮」選單手動建立。</p>{% endif %}
+    </div>
+
+    <div class="workspace-col preview-col">
+      <div class="col-header"><h3>新聞預覽</h3></div>
+      <div id="preview-panel"><p class="muted">點選左方或中間的新聞卡片以預覽</p></div>
+    </div>
   </div>
-  <table class="data-table">
-    <tbody>
-      {% for it in news_by_topic.get(t.topic_id, []) %}
-      <tr>
-        <td>{{ it.title }}（{{ it.source }}）</td>
-        <td>{{ move_form(it.row_id) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </div>
-{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const NEWS_DATA = {{ news_lookup | tojson }};
+let changeCount = 0;
+
+function onDragStart(event) {
+  event.dataTransfer.setData("text/plain", event.currentTarget.dataset.rowId);
+}
+
+function allowDrop(event) {
+  event.preventDefault();
+}
+
+function moveCardTo(rowId, target, targetZone) {
+  if (!targetZone) return;
+  const card = document.querySelector(`.news-card[data-row-id="${rowId}"]`);
+  if (!card || card.closest(".drop-zone") === targetZone) return;
+
+  fetch("{{ url_for('clustering.move') }}", {
+    method: "POST",
+    headers: {"X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded"},
+    body: new URLSearchParams({row_id: rowId, target: target}),
+  }).then(r => {
+    if (!r.ok) throw new Error("move failed");
+    targetZone.insertBefore(card, targetZone.querySelector(".drop-hint"));
+    updateCounts();
+    bumpChangeCounter();
+  }).catch(() => alert("移動失敗，請重新整理頁面再試一次"));
+}
+
+function handleDrop(event, target) {
+  event.preventDefault();
+  const rowId = event.dataTransfer.getData("text/plain");
+  if (!rowId) return;
+  moveCardTo(rowId, target, event.currentTarget);
+}
+
+function targetZoneElement(target) {
+  if (target === "__unassign__") return document.getElementById("unclustered-list");
+  if (target === "__not_retained__") return document.getElementById("not-retained-list");
+  return document.getElementById("topic-members-" + target);
+}
+
+function cardMoveTo(rowId, target) {
+  moveCardTo(rowId, target, targetZoneElement(target));
+}
+
+function viewOriginal(rowId) {
+  const data = NEWS_DATA[rowId];
+  if (data && data.url) window.open(data.url, "_blank");
+}
+
+function updateCounts() {
+  document.getElementById("not-retained-count").textContent =
+    document.getElementById("not-retained-list").querySelectorAll(".news-card").length;
+  document.getElementById("unclustered-count").textContent =
+    document.getElementById("unclustered-list").querySelectorAll(".news-card").length;
+  document.querySelectorAll("#topic-select option").forEach(opt => {
+    const zone = document.getElementById("topic-members-" + opt.value);
+    const count = zone ? zone.querySelectorAll(".news-card").length : 0;
+    opt.textContent = `${opt.dataset.topicName}（${count}）`;
+  });
+  const select = document.getElementById("topic-select");
+  if (select.value) {
+    const zone = document.getElementById("topic-members-" + select.value);
+    document.getElementById("selected-topic-count").textContent = zone ? zone.querySelectorAll(".news-card").length : 0;
+  }
+}
+
+function bumpChangeCounter() {
+  changeCount++;
+  const btn = document.getElementById("apply-changes-btn");
+  btn.textContent = `套用變更（${changeCount}）`;
+  btn.disabled = false;
+}
+
+function applyChanges() {
+  if (changeCount === 0) return;
+  showToast(`已套用 ${changeCount} 項分類調整`);
+  changeCount = 0;
+  const btn = document.getElementById("apply-changes-btn");
+  btn.textContent = "套用變更";
+  btn.disabled = true;
+}
+
+function showToast(msg) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.getElementById("unclustered-list").style.display = tab === "unclustered" ? "" : "none";
+  document.getElementById("not-retained-list").style.display = tab === "not-retained" ? "" : "none";
+}
+
+function filterCards() {
+  const q = document.getElementById("news-search").value.trim().toLowerCase();
+  document.querySelectorAll("#unclustered-list .news-card, #not-retained-list .news-card").forEach(card => {
+    card.style.display = card.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function toggleTopicMenu() {
+  document.getElementById("topic-dropdown-menu").classList.toggle("open");
+}
+function closeTopicMenu() {
+  document.getElementById("topic-dropdown-menu").classList.remove("open");
+}
+function toggleCardMenu(btn) {
+  const menu = btn.nextElementSibling;
+  const isOpen = menu.classList.contains("open");
+  closeCardMenus();
+  if (!isOpen) menu.classList.add("open");
+}
+function closeCardMenus() {
+  document.querySelectorAll(".card-dropdown.open").forEach(el => el.classList.remove("open"));
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".topic-menu-wrap")) closeTopicMenu();
+  if (!e.target.closest(".card-menu-wrap")) closeCardMenus();
+});
+
+function selectTopic(topicId) {
+  document.querySelectorAll(".topic-members").forEach(el => el.style.display = "none");
+  const zone = document.getElementById("topic-members-" + topicId);
+  if (zone) zone.style.display = "block";
+
+  const select = document.getElementById("topic-select");
+  select.value = topicId;
+  const option = select.querySelector(`option[value="${topicId}"]`);
+
+  document.getElementById("toolbar-rename-topic-id").value = topicId;
+  document.getElementById("toolbar-rename-input").value = option ? option.dataset.topicName : "";
+  document.getElementById("toolbar-merge-source-id").value = topicId;
+  document.getElementById("toolbar-delete-topic-id").value = topicId;
+  document.getElementById("toolbar-delete-btn").disabled =
+    !!(zone && zone.querySelectorAll(".news-card").length);
+  document.getElementById("selected-topic-count").textContent = zone ? zone.querySelectorAll(".news-card").length : 0;
+
+  const mergeSelect = document.getElementById("toolbar-merge-target");
+  mergeSelect.innerHTML = "";
+  document.querySelectorAll("#topic-select option").forEach(opt => {
+    if (opt.value === topicId) return;
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.dataset.topicName;
+    mergeSelect.appendChild(o);
+  });
+}
+
+function showPreview(rowId) {
+  const data = NEWS_DATA[rowId];
+  if (!data) return;
+  const panel = document.getElementById("preview-panel");
+  panel.innerHTML = "";
+
+  const h4 = document.createElement("h4");
+  h4.textContent = data.title;
+  panel.appendChild(h4);
+
+  const meta = document.createElement("p");
+  meta.className = "muted";
+  meta.textContent = `${data.source}　${data.published_at}`;
+  panel.appendChild(meta);
+
+  if (data.url) {
+    const p = document.createElement("p");
+    const a = document.createElement("a");
+    a.href = data.url; a.target = "_blank"; a.className = "btn"; a.textContent = "開啟原文連結";
+    p.appendChild(a);
+    panel.appendChild(p);
+  }
+
+  const body = document.createElement("div");
+  body.className = "body-full";
+  // body_html 是後端用 highlight_keywords() 產生的安全 HTML（已跳脫，只多了
+  // <strong> 標記），完整原文不截斷，只加粗設定頁關鍵字彙整表裡出現過的詞。
+  body.innerHTML = data.body_html || "（尚無正文）";
+  panel.appendChild(body);
+}
+
+function createTopic() {
+  const name = prompt("新議題名稱：");
+  if (!name) return;
+  fetch("{{ url_for('clustering.create_topic') }}", {
+    method: "POST",
+    headers: {"X-Requested-With": "fetch", "Content-Type": "application/x-www-form-urlencoded"},
+    body: new URLSearchParams({name: name}),
+  }).then(r => {
+    if (!r.ok) throw new Error("create_topic failed");
+    return r.json();
+  }).then(data => addTopicToUI(data.topic_id, data.topic_name))
+    .catch(() => alert("建立議題失敗，請重新整理頁面再試一次"));
+}
+
+function addTopicToUI(topicId, topicName) {
+  // 新增議題不整頁重新導向重繪（見 create_topic() 後端註解），這裡把新議題
+  // 插進下拉選單與議題成員區的 DOM，再切換過去——保留使用者原本的分頁/搜尋/
+  // 捲動狀態，也讓新建的議題立刻可見可用，而不是像之前那樣跳回一開始選中的
+  // 第一個議題。
+  const noTopicsHint = document.getElementById("no-topics-hint");
+  if (noTopicsHint) noTopicsHint.remove();
+
+  const select = document.getElementById("topic-select");
+  const opt = document.createElement("option");
+  opt.value = topicId;
+  opt.dataset.topicName = topicName;
+  opt.textContent = `${topicName}（0）`;
+  select.appendChild(opt);
+
+  const zone = document.createElement("div");
+  zone.className = "drop-zone topic-members";
+  zone.id = "topic-members-" + topicId;
+  zone.dataset.topicId = topicId;
+  zone.style.display = "none";
+  zone.ondragover = allowDrop;
+  zone.ondrop = (event) => handleDrop(event, topicId);
+  const hint = document.createElement("div");
+  hint.className = "drop-hint";
+  hint.textContent = "拖曳新聞卡片到這裡加入此議題";
+  zone.appendChild(hint);
+  document.getElementById("topic-zones").appendChild(zone);
+
+  selectTopic(topicId);
+}
+
+// 預設選第一個議題（若有）
+{% if topics %}selectTopic("{{ topics[0].topic_id }}");{% endif %}
+</script>
 {% endblock %}

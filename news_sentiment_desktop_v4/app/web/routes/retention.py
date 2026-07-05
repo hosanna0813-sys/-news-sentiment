@@ -1,6 +1,10 @@
 """留用初判頁 — 對應桌面版 app/workers/retention_worker.py 的批次流程，
 改寫成背景 Thread（見 app/web/job_runner.py）版本；核心 AI 呼叫完全重用
 app/services/retention/retention_service.py，不重寫判斷邏輯。
+
+build_retention_job_inputs() 是這裡與「一鍵完成」流程
+（app/web/routes/pipeline.py）共用的組裝邏輯——prompt/human_examples/批次切法
+只寫一次，兩邊都呼叫同一份，避免各自維護一份容易日後兜不起來。
 """
 from __future__ import annotations
 
@@ -14,9 +18,10 @@ from app.repositories.news_repository import NewsRepository
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.job_repository import JobRepository, BatchRepository
 from app.services.retention.retention_service import prefilter_batch, judge_batch, decide_retain, \
-    _FALLBACK_JUDGEMENT
+    apply_human_retention_override, build_human_examples, _FALLBACK_JUDGEMENT
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
+from app.utils.text_utils import extract_keywords_from_taxonomy, highlight_keywords, clean_body_for_preview
 
 retention_bp = Blueprint("retention", __name__)
 
@@ -32,42 +37,43 @@ _ZERO_SCORE_FIELDS = {
 
 
 def _build_human_examples(feedback_repo, news_repo) -> str:
-    entries = feedback_repo.list_all(entity_type="retention")
-    lines = []
-    for e in entries:
-        if not (e.action or "").startswith("human_") or not (e.human_final_value or "").strip():
-            continue
-        it = news_repo.get(e.entity_id)
-        if it is None:
-            continue
-        old_label = "留用" if (e.ai_original_value or "") == "留用" else "不留用"
-        new_label = "留用" if e.human_final_value == "留用" else "不留用"
-        lines.append(f"- 新聞《{it.title[:40]}》：AI 原判 {old_label} → 人工改判{new_label}")
-        if len(lines) >= MAX_FEWSHOT_EXAMPLES:
-            break
-    return "\n".join(lines)
+    """已收斂至 retention_service.build_human_examples()（原本這裡與桌面版
+    app/workers/retention_worker.py 的 _build_retention_human_examples 各自
+    重複實作一份、且已經出現分岔——這份原本多了 reason 標題快照、桌面版原本
+    多了 ★星等），保留原函式名稱供既有測試沿用，兩邊現在拿到完整功能。"""
+    return build_human_examples(feedback_repo, news_repo, MAX_FEWSHOT_EXAMPLES)
 
 
-@retention_bp.route("/retention")
-def index():
-    ctx = get_context()
-    items = ctx.news_repo.list_all()
-    return render_template("retention.html", items=items, job_id=request.args.get("job_id"))
+def build_keyword_context(ctx) -> str:
+    """把使用者在設定頁貼的議題／關鍵字彙整表，轉成一段可直接注入 prompt 的
+    參考文字。刻意不在程式端解析布林語法（來源常有不平衡括號、不一致分隔符號
+    等人工謄寫雜訊，硬解析容易悄悄出錯）——原文交給 AI 理解語意即可。"""
+    taxonomy = (ctx.settings.keyword_taxonomy or "").strip()
+    if not taxonomy:
+        return ""
+    return (
+        "【業務關注議題與關鍵字對照表】以下是本單位各業務關注的議題分類與相關關鍵字"
+        "（可能包含 | 代表或、& 代表且的檢索語法），請作為判斷新聞是否相關、"
+        "以及應歸入哪個議題類別的重要參考：\n" + taxonomy
+    )
 
 
-@retention_bp.route("/retention/run", methods=["POST"])
-def run():
-    ctx = get_context()
+def build_retention_job_inputs(ctx):
+    """回傳 (batches, process_fn)；沒有待判斷的新聞時回傳 ([], None)。"""
     items = [it for it in ctx.news_repo.list_all() if it.retention_judged_by != "human"]
     if not items:
-        return redirect(url_for("retention.index"))
+        return [], None
 
     prefilter_cfg = get_active_prompt(ctx.prompt_repo, "retention_prefilter")
     prefilter_schema = json.loads(prefilter_cfg.tool_schema_json)
     judge_cfg = get_active_prompt(ctx.prompt_repo, "retention_judgement")
     judge_schema = json.loads(judge_cfg.tool_schema_json)
     priority_threshold = ctx.settings.api.retention_priority_threshold
+
+    keyword_context = build_keyword_context(ctx)
     human_examples = _build_human_examples(FeedbackRepository(), NewsRepository())
+    if keyword_context:
+        human_examples = f"{keyword_context}\n\n{human_examples}" if human_examples else keyword_context
 
     batches = [items[i:i + BATCH_SIZE] for i in range(0, len(items), BATCH_SIZE)]
 
@@ -118,6 +124,41 @@ def run():
                           human_final_value="", action="ai_judge", operator="system")
         return BatchOutcome(success=True, success_count=len(batch_items))
 
+    return batches, process
+
+
+@retention_bp.route("/retention")
+def index():
+    ctx = get_context()
+    items = ctx.news_repo.list_all()
+    job_id = request.args.get("job_id")
+    if not job_id:
+        # 沒有 job_id 查詢參數時（例如使用者重新整理、或直接輸入網址回到這頁），
+        # 仍主動查一次有沒有尚未跑完的留用初判工作並顯示進度條——避免使用者以為
+        # 「進度條消失=卡住」，其實只是網址上的 job_id 不見了。
+        running = JobRepository().list_resumable("retention")
+        if running:
+            job_id = running[0].job_id
+
+    # 正文預覽維持完整原文、不截斷，只是把來源網頁常見的零星換行攤平成連續文字
+    # （clean_body_for_preview，避免看起來被切成一截一截），並把設定頁「議題／
+    # 關鍵字彙整表」裡出現過的詞加粗提示——純視覺輔助，不影響 AI 判斷邏輯
+    # （那邊仍是整段原文交給模型）。
+    keywords = extract_keywords_from_taxonomy(ctx.settings.keyword_taxonomy)
+    body_html_by_row_id = {
+        it.row_id: highlight_keywords(clean_body_for_preview(it.body_text), keywords)
+        for it in items if it.body_text
+    }
+    return render_template("retention.html", items=items, job_id=job_id,
+                            body_html_by_row_id=body_html_by_row_id)
+
+
+@retention_bp.route("/retention/run", methods=["POST"])
+def run():
+    ctx = get_context()
+    batches, process = build_retention_job_inputs(ctx)
+    if not batches:
+        return redirect(url_for("retention.index"))
     job_id = start_batch_job("retention", batches, process, JobRepository(), BatchRepository())
     return redirect(url_for("retention.index", job_id=job_id))
 
@@ -129,13 +170,13 @@ def override():
     retained = request.form.get("retained") == "on"
     item = ctx.news_repo.get(row_id)
     if item is not None:
-        old_status = item.retention_status
-        ctx.news_repo.update_fields(row_id, {
-            "retained": 1 if retained else 0,
-            "retention_status": "留用" if retained else "人工不留用",
-            "retention_judged_by": "human",
-        })
-        log_feedback(FeedbackRepository(), batch_id="", entity_type="retention", entity_id=row_id,
-                      ai_original_value=old_status, human_final_value="留用" if retained else "不留用",
-                      action="human_override", operator="web")
+        apply_human_retention_override(
+            ctx.news_repo, FeedbackRepository(), row_id, retained,
+            old_status=item.retention_status, action="human_override",
+            operator="web", reason=item.title[:60])
+    # 勾選留用是用背景 fetch 送出（見 retention.html 的 toggleRetained()），
+    # 不需要整頁重新導向、也不用浪費一次完整頁面渲染；沒有這個標頭的請求
+    # （例如停用 JS 時的一般表單提交）才走原本的重新導向。
+    if request.headers.get("X-Requested-With") == "fetch":
+        return ("", 204)
     return redirect(url_for("retention.index"))

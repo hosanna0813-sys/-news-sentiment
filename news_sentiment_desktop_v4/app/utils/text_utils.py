@@ -1,10 +1,11 @@
 """通用工具：ID 產生、文字清理、JSON 安全解析"""
 from __future__ import annotations
 
+import html
 import json
 import re
 import uuid
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 
 def new_id(prefix: str = "") -> str:
@@ -19,6 +20,29 @@ def normalize_whitespace(text: str) -> str:
     text = re.sub(r"[ \t\u3000]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def clean_body_for_preview(text: str) -> str:
+    """新聞正文「畫面預覽」用的顯示層清理，不改動資料庫裡儲存的原始 body_text，
+    也不影響送進 AI 判斷的內容或 Word 匯出。
+
+    來源網頁常見同一段文字被拆成好幾行（例如 CMS 編輯器裡按 Enter 換行、或
+    每個 <p> 對應一句話而非一個完整段落），這些單一換行被 normalize_whitespace()
+    刻意保留（它只把 3 個以上的換行收斂成 2 個，視為段落間距），但預覽區塊的
+    CSS 是 white-space: pre-wrap，會把「每一個」換行都畫成一次真正換行，讓文字
+    看起來被切成一截一截。這裡把「原文中的段落分隔」（連續 2 個以上換行）保留
+    下來，段落內部零星的單一換行則攤平成空白，讓同一段文字連續顯示。"""
+    if not text:
+        return text
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    paragraphs = re.split(r"\n{2,}", normalized)
+    cleaned = []
+    for para in paragraphs:
+        flat = re.sub(r"\s*\n\s*", " ", para)
+        flat = re.sub(r"[ \t　]+", " ", flat).strip()
+        if flat:
+            cleaned.append(flat)
+    return "\n\n".join(cleaned)
 
 
 def safe_json_loads(text: str) -> Optional[Any]:
@@ -169,6 +193,55 @@ def extract_placeholders(template: str) -> set:
     if not template:
         return set()
     return set(re.findall(r"\{(\w+)\}", template))
+
+
+def extract_keywords_from_taxonomy(taxonomy: str) -> List[str]:
+    """從「議題／關鍵字彙整表」free-text（設定頁 keyword_taxonomy）粗略取出個別
+    關鍵字詞，只用於新聞正文預覽的加粗提示——不影響 AI 判斷邏輯（那邊仍是整段
+    原文交給模型理解語意，見 app/web/routes/retention.py 的
+    build_keyword_context()）。格式不強制工整：逐行嘗試切出「議題欄」與「關鍵字
+    欄」（用 tab／全形空白／兩個以上空白分隔，找不到就整行當關鍵字欄），關鍵字欄
+    再依常見布林/分隔符號拆開。單字元詞（雜訊機率高）不收錄。"""
+    if not taxonomy:
+        return []
+    keywords = set()
+    for line in taxonomy.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = re.split(r"\t|　| {2,}", line, maxsplit=1)
+        expr = parts[1] if len(parts) > 1 else parts[0]
+        for token in re.split(r"[|&()（）,，、\s]+", expr):
+            token = token.strip()
+            if len(token) >= 2:
+                keywords.add(token)
+    return sorted(keywords, key=len, reverse=True)
+
+
+def highlight_keywords(text: str, keywords: List[str]) -> str:
+    """把 text 轉成 HTML 安全字串，並將 keywords 中有出現的詞以 <strong> 包住
+    （新聞正文預覽加粗提示用）。完整原文照樣輸出、不做任何截斷，只是額外標記。
+    keywords 應已由長到短排序，讓較長、較specific 的詞在同一個起始位置優先命中，
+    不會被短詞搶先比對到一部分。"""
+    if not text:
+        return ""
+    if not keywords:
+        return html.escape(text)
+    pattern = "|".join(re.escape(k) for k in keywords if k)
+    if not pattern:
+        return html.escape(text)
+    regex = re.compile(f"({pattern})", re.IGNORECASE)
+    parts = regex.split(text)
+    out = []
+    for i, part in enumerate(parts):
+        if not part:
+            continue
+        escaped = html.escape(part)
+        if i % 2 == 1:  # re.split 搭配捕獲群組時，奇數索引是命中的關鍵字本身
+            out.append(f"<strong>{escaped}</strong>")
+        else:
+            out.append(escaped)
+    return "".join(out)
 
 
 def safe_format(template: str, **kwargs) -> str:
