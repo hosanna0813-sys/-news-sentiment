@@ -90,6 +90,19 @@ def test_settings_save_and_reload(logged_in_client, web_app):
     assert ctx.settings.gmail.subject_keyword == "監測報告"
 
 
+def test_settings_shows_exact_oauth_redirect_uri(client, monkeypatch):
+    # redirect_uri_mismatch（Google 400 錯誤）多半是使用者手動猜測/謄寫網址時
+    # 打錯，設定頁改成直接顯示程式實際會用的 redirect_uri 供逐字複製，
+    # 這裡驗證顯示的字串跟請求時的 scheme/host 完全一致。
+    monkeypatch.setenv("GMAIL_OAUTH_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_OAUTH_CLIENT_SECRET", "csecret")
+    base_url = "https://example.onrender.com"
+    client.post("/login", data={"password": WEB_PASSWORD}, base_url=base_url)
+    resp = client.get("/settings", base_url=base_url)
+    assert resp.status_code == 200
+    assert b"https://example.onrender.com/gmail/oauth/callback" in resp.data
+
+
 def test_retention_override_persists(logged_in_client, web_app):
     ctx = web_app.config["APP_CONTEXT"]
     ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A"))

@@ -32,6 +32,10 @@ def index():
     oauth_client_configured = bool(os.environ.get("GMAIL_OAUTH_CLIENT_ID") and
                                     os.environ.get("GMAIL_OAUTH_CLIENT_SECRET"))
     gmail_connected = get_valid_credentials() is not None
+    # 顯示程式實際會送給 Google 的 redirect_uri，讓使用者逐字複製到 Google
+    # Cloud Console 的 Authorized redirect URIs——手動猜測網址是
+    # redirect_uri_mismatch（400）最常見的原因。
+    oauth_redirect_uri = url_for("settings.gmail_oauth_callback", _external=True)
 
     return render_template(
         "settings.html",
@@ -40,6 +44,7 @@ def index():
         api_key_masked=mask_api_key(os.environ.get("ANTHROPIC_API_KEY")),
         oauth_client_configured=oauth_client_configured,
         gmail_connected=gmail_connected,
+        oauth_redirect_uri=oauth_redirect_uri,
     )
 
 

@@ -33,6 +33,16 @@
   {% endif %}
 </p>
 
+<div class="result-box">
+  <p><strong>Authorized redirect URI</strong>（請把下面這行「逐字」複製貼到
+  Google Cloud Console 該 OAuth Client 的「已授權的重新導向 URI」欄位——
+  差一個字元、http/https、結尾斜線都會導致連接時出現
+  <code>redirect_uri_mismatch</code>（錯誤 400）：</p>
+  <p><code id="redirect-uri">{{ oauth_redirect_uri }}</code>
+    <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('redirect-uri').textContent)">複製</button>
+  </p>
+</div>
+
 <form method="post">
   <label>寄件者信箱篩選<br>
     <input type="text" name="sender_email_filter" value="{{ gmail.sender_email_filter }}" placeholder="例：xkm_cs@xkd.com.tw">
