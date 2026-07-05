@@ -2381,3 +2381,6 @@ AttributeError: 'str' object has no attribute 'setdefault'
 2026-07-05 01:03:38 | WARNING | nsd.model_gateway | [retention_judgement] 模型 claude-sonnet-5 不支援參數 `temperature`，已記錄並剝除後重送
 2026-07-05 01:03:39 | WARNING | nsd.model_gateway | [retention_judgement] 模型 claude-sonnet-5 不支援參數 `temperature`，已記錄並剝除後重送
 2026-07-05 01:03:40 | WARNING | nsd.model_gateway | [retention_judgement] 模型 claude-sonnet-5 不支援參數 `temperature`，已記錄並剝除後重送
+2026-07-05 01:26:44 | INFO    | nsd.app_context | AppContext 初始化完成
+2026-07-05 07:51:32 | INFO    | nsd.app_context | AppContext 初始化完成
+2026-07-05 07:52:01 | INFO    | nsd.word_exporter | 簡易議題清單已輸出: E:\Downloads\新聞議題清單.docx
