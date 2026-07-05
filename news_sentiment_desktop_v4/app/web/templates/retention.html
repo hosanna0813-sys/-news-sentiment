@@ -15,11 +15,10 @@
   </form>
 {% endif %}
 
-<table class="data-table">
+<table class="data-table retention-table">
   <thead>
     <tr>
-      <th>留用</th><th>標題</th><th>來源</th><th>時間</th>
-      <th>AI 建議</th><th>星等</th>
+      <th>留用</th><th>標題</th><th>來源</th><th>時間</th><th>星等</th>
     </tr>
   </thead>
   <tbody>
@@ -28,17 +27,16 @@
       <td>
         <form method="post" action="{{ url_for('retention.override') }}" class="inline-form">
           <input type="hidden" name="row_id" value="{{ it.row_id }}">
-          <input type="checkbox" name="retained" onchange="this.form.submit()" {{ 'checked' if it.retained }}>
+          <input type="checkbox" name="retained" onchange="toggleRetained(this)" {{ 'checked' if it.retained }}>
         </form>
       </td>
       <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">{{ it.title }}</a>{% else %}{{ it.title }}{% endif %}</td>
       <td>{{ it.source }}</td>
       <td>{{ it.published_at }}</td>
-      <td>{{ it.retention_status }}</td>
       <td>{{ '★' * it.priority_stars if it.priority_stars else '-' }}</td>
     </tr>
     <tr class="body-row">
-      <td colspan="6">
+      <td colspan="5">
         <details>
           <summary>正文{% if not it.body_text %}（尚無正文）{% endif %}</summary>
           {% if it.body_text %}
@@ -50,4 +48,21 @@
     {% endfor %}
   </tbody>
 </table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 勾選留用/取消留用改用背景 fetch 送出，不整頁重新導向——避免每點一次勾選就跳回
+// 頁面最上方，尤其新聞筆數多時捲動位置會被打斷，體驗很差。
+function toggleRetained(checkbox) {
+  const form = checkbox.form;
+  fetch(form.action, {
+    method: "POST",
+    body: new FormData(form),
+    headers: {"X-Requested-With": "fetch"},
+  }).then(() => {
+    checkbox.closest("tr").classList.toggle("row-not-retained", !checkbox.checked);
+  });
+}
+</script>
 {% endblock %}

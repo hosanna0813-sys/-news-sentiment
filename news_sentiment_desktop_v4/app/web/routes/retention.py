@@ -146,4 +146,9 @@ def override():
         log_feedback(FeedbackRepository(), batch_id="", entity_type="retention", entity_id=row_id,
                       ai_original_value=old_status, human_final_value="留用" if retained else "不留用",
                       action="human_override", operator="web")
+    # 勾選留用是用背景 fetch 送出（見 retention.html 的 toggleRetained()），
+    # 不需要整頁重新導向、也不用浪費一次完整頁面渲染；沒有這個標頭的請求
+    # （例如停用 JS 時的一般表單提交）才走原本的重新導向。
+    if request.headers.get("X-Requested-With") == "fetch":
+        return ("", 204)
     return redirect(url_for("retention.index"))

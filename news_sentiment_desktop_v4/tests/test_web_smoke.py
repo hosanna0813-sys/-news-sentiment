@@ -165,6 +165,21 @@ def test_retention_override_persists(logged_in_client, web_app):
     assert item.retention_judged_by == "human"
 
 
+def test_retention_override_via_fetch_returns_204_without_redirect(logged_in_client, web_app):
+    # 勾選留用用背景 fetch 送出（見 retention.html toggleRetained()），不應該整頁
+    # 重新導向——不然使用者每點一次勾選，畫面就會跳回頁面最上方，捲動位置全毀。
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A"))
+
+    resp = logged_in_client.post(
+        "/retention/override",
+        data={"row_id": "r1", "retained": "on"},
+        headers={"X-Requested-With": "fetch"},
+    )
+    assert resp.status_code == 204
+    assert ctx.news_repo.get("r1").retained == 1
+
+
 def test_retention_page_shows_collapsed_full_body_and_checkbox_first_column(logged_in_client, web_app):
     ctx = web_app.config["APP_CONTEXT"]
     full_body = "這是完整正文內容。" * 20
