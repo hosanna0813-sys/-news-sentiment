@@ -17,22 +17,32 @@
 
 <table class="data-table">
   <thead>
-    <tr><th>標題</th><th>來源</th><th>時間</th><th>AI 建議</th><th>星等</th><th>留用</th></tr>
+    <tr>
+      <th>留用</th><th>標題</th><th>來源</th><th>時間</th><th>正文預覽</th>
+      <th>AI 建議</th><th>星等</th>
+    </tr>
   </thead>
   <tbody>
     {% for it in items %}
     <tr class="{{ 'row-not-retained' if not it.retained }}">
-      <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">{{ it.title }}</a>{% else %}{{ it.title }}{% endif %}</td>
-      <td>{{ it.source }}</td>
-      <td>{{ it.published_at }}</td>
-      <td>{{ it.retention_status }}</td>
-      <td>{{ '★' * it.priority_stars if it.priority_stars else '-' }}</td>
       <td>
         <form method="post" action="{{ url_for('retention.override') }}" class="inline-form">
           <input type="hidden" name="row_id" value="{{ it.row_id }}">
           <input type="checkbox" name="retained" onchange="this.form.submit()" {{ 'checked' if it.retained }}>
         </form>
       </td>
+      <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">{{ it.title }}</a>{% else %}{{ it.title }}{% endif %}</td>
+      <td>{{ it.source }}</td>
+      <td>{{ it.published_at }}</td>
+      <td class="body-preview" title="{{ it.body_text }}">
+        {% if it.body_text %}
+          {{ it.body_text.replace('\n', ' ') | truncate(80) }}
+        {% else %}
+          <span class="muted">（尚無正文）</span>
+        {% endif %}
+      </td>
+      <td>{{ it.retention_status }}</td>
+      <td>{{ '★' * it.priority_stars if it.priority_stars else '-' }}</td>
     </tr>
     {% endfor %}
   </tbody>

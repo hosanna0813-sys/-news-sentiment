@@ -44,6 +44,15 @@ table.data-table th, table.data-table td {
   vertical-align: middle;
 }
 tr.row-not-retained { opacity: 0.55; }
+td.body-preview {
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.muted { color: var(--muted); }
 
 .flash-list { margin-bottom: 1rem; }
 .flash { padding: 0.6rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; }

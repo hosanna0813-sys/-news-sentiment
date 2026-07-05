@@ -37,8 +37,15 @@ def index():
     news_by_topic = {t.topic_id: ctx.news_repo.list_by_topic(t.topic_id) for t in topics}
     unclustered = [it for it in ctx.news_repo.list_all()
                    if it.retained and not it.final_topic_id]
+    job_id = request.args.get("job_id")
+    if not job_id:
+        # 同 retention 頁：沒帶 job_id 時也主動查一次有沒有跑到一半的分群工作，
+        # 避免重新整理後進度條消失被誤會成卡住。
+        running = JobRepository().list_resumable("clustering")
+        if running:
+            job_id = running[0].job_id
     return render_template("clustering.html", topics=topics, news_by_topic=news_by_topic,
-                            unclustered=unclustered, job_id=request.args.get("job_id"))
+                            unclustered=unclustered, job_id=job_id)
 
 
 def _build_human_examples(feedback_repo, news_repo) -> str:

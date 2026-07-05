@@ -165,6 +165,41 @@ def test_retention_override_persists(logged_in_client, web_app):
     assert item.retention_judged_by == "human"
 
 
+def test_retention_page_shows_body_preview_and_checkbox_first_column(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.news_repo.upsert_one(NewsItem(
+        row_id="r1", title="新聞一", source="來源A", body_text="這是完整正文內容。" * 20,
+    ))
+    ctx.news_repo.upsert_one(NewsItem(row_id="r2", title="新聞二", source="來源B", body_text=""))
+
+    resp = logged_in_client.get("/retention")
+    assert resp.status_code == 200
+    html = resp.data.decode("utf-8")
+    assert "body-preview" in html
+    assert "尚無正文" in html
+    # 留用 checkbox 欄位要在標題欄位「之前」出現（最左欄）
+    assert html.index('name="retained"') < html.index("新聞一")
+
+
+def test_retention_page_auto_shows_progress_for_inflight_job_without_query_param(
+    logged_in_client, web_app,
+):
+    # 使用者重新整理頁面、網址上沒有 ?job_id=... 時，若資料庫裡還有一個
+    # 未完成的留用初判工作，頁面仍要主動顯示進度條，不能讓人誤以為卡住了。
+    from app.repositories.job_repository import JobRepository
+    from app.models.job import JobRecord
+
+    job_repo = JobRepository()
+    job = JobRecord.new("retention", 10)
+    job_repo.create(job)
+    job_repo.update(job.job_id, {"status": "running"})
+
+    resp = logged_in_client.get("/retention")
+    assert resp.status_code == 200
+    assert b"progress-wrap" in resp.data
+    assert b"/retention/run" not in resp.data
+
+
 def test_retention_run_background_job(logged_in_client, web_app):
     ctx = web_app.config["APP_CONTEXT"]
     for i in range(1, 4):

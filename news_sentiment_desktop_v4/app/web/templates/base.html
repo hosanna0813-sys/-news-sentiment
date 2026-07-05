@@ -38,9 +38,15 @@
 function pollJob(jobId, onDone) {
   const bar = document.getElementById("job-progress");
   const label = document.getElementById("job-progress-label");
+  if (label) label.textContent = "讀取進度中...";
   const tick = () => {
     fetch(`/jobs/${jobId}/status`).then(r => r.json()).then(data => {
-      if (data.error) return;
+      if (data.error) {
+        // 查不到這個 job_id（例如工作紀錄剛好被清除）也要讓使用者看到明確狀態，
+        // 不能靜默不再更新、讓畫面卡在「處理中」的假象。
+        if (label) label.textContent = "查無此工作進度，可能已完成或已被清除，請重新整理頁面";
+        return;
+      }
       const total = data.total_items || 1;
       const pct = Math.round((data.progress_current / total) * 100);
       if (bar) bar.style.width = pct + "%";
@@ -53,7 +59,7 @@ function pollJob(jobId, onDone) {
         else window.location.href = window.location.pathname;
         return;
       }
-      setTimeout(tick, 3000);
+      setTimeout(tick, 1500);
     }).catch(() => setTimeout(tick, 5000));
   };
   tick();

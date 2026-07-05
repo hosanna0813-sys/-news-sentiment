@@ -52,7 +52,15 @@ def _build_human_examples(feedback_repo, news_repo) -> str:
 def index():
     ctx = get_context()
     items = ctx.news_repo.list_all()
-    return render_template("retention.html", items=items, job_id=request.args.get("job_id"))
+    job_id = request.args.get("job_id")
+    if not job_id:
+        # 沒有 job_id 查詢參數時（例如使用者重新整理、或直接輸入網址回到這頁），
+        # 仍主動查一次有沒有尚未跑完的留用初判工作並顯示進度條——避免使用者以為
+        # 「進度條消失=卡住」，其實只是網址上的 job_id 不見了。
+        running = JobRepository().list_resumable("retention")
+        if running:
+            job_id = running[0].job_id
+    return render_template("retention.html", items=items, job_id=job_id)
 
 
 @retention_bp.route("/retention/run", methods=["POST"])
