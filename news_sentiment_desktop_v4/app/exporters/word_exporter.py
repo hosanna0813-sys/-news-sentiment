@@ -167,13 +167,16 @@ def export_simple_topic_list(
         except KeyError:
             continue
 
+    idx = 0
     for topic in topics:
         items = news_by_topic.get(topic.topic_id, [])
         if not items:
-            continue  # 空議題跳過
-        doc.add_heading(topic.topic_name, level=1)
+            continue  # 空議題跳過（不佔編號）
+        idx += 1
+        doc.add_heading(f"{idx}. {topic.topic_name}", level=1)
         for it in items:
-            doc.add_paragraph(it.title)
+            # 標題行格式：「新聞來源-標題」；來源為空時只印標題
+            doc.add_paragraph(f"{it.source}-{it.title}" if it.source else it.title)
             if it.url:
                 p = doc.add_paragraph()
                 _add_hyperlink(p, it.url, it.url, settings.font_name)

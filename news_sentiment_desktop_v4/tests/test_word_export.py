@@ -69,27 +69,31 @@ def test_simple_topic_list_export(tmp_path):
     from app.exporters.word_exporter import export_simple_topic_list
 
     t1 = Topic(topic_id="t1", topic_name="議題一：政策爭議", summary_150="不該出現的摘要內容。")
+    t_empty = Topic(topic_id="t0", topic_name="空議題不應出現")  # 排中間，驗證不佔編號
     t2 = Topic(topic_id="t2", topic_name="議題二：治安事件")
-    t_empty = Topic(topic_id="t3", topic_name="空議題不應出現")
     news = {
         "t1": [
             NewsItem(row_id="r1", title="新聞甲", source="中央社", url="http://example.com/a"),
-            NewsItem(row_id="r2", title="新聞乙（無連結）", source="聯合報", url=""),
+            NewsItem(row_id="r2", title="新聞乙（無來源無連結）", source="", url=""),
         ],
         "t2": [NewsItem(row_id="r3", title="新聞丙", source="自由", url="http://example.com/c")],
-        "t3": [],
+        "t0": [],
     }
 
     out = tmp_path / "simple.docx"
-    result = export_simple_topic_list(str(out), [t1, t2, t_empty], news, WordExportSettings())
+    result = export_simple_topic_list(str(out), [t1, t_empty, t2], news, WordExportSettings())
     assert os.path.exists(result)
 
     from docx import Document
     doc = Document(result)
-    full_text = "\n".join(p.text for p in doc.paragraphs)
-    assert "議題一：政策爭議" in full_text
-    assert "議題二：治安事件" in full_text
-    assert "新聞甲" in full_text and "新聞乙（無連結）" in full_text and "新聞丙" in full_text
+    texts = [p.text for p in doc.paragraphs]
+    full_text = "\n".join(texts)
+    assert "1. 議題一：政策爭議" in texts        # 議題有編號
+    assert "2. 議題二：治安事件" in texts        # 空議題不佔編號
+    assert "中央社-新聞甲" in texts              # 來源-標題 前綴
+    assert "自由-新聞丙" in texts
+    assert "新聞乙（無來源無連結）" in texts     # 無來源時只印標題
+    assert not any(t.startswith("-") for t in texts)  # 不出現孤兒的 -
     assert "不該出現的摘要內容" not in full_text   # 不含摘要
     assert "空議題不應出現" not in full_text       # 空議題跳過
     xml = doc.element.xml
