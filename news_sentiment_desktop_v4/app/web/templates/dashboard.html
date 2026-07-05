@@ -10,7 +10,15 @@
   <div class="stat-card"><div class="stat-num">{{ topic_count }}</div><div class="stat-label">議題數</div></div>
 </div>
 
-<h2>操作流程</h2>
+<h2>🚀 一鍵完成</h2>
+<p class="muted">依序自動完成「匯入 → 抓正文 → 留用初判 → 議題分群」，跑完直接帶你到議題分群頁做人工調整。</p>
+<form method="post" action="{{ url_for('pipeline.run') }}">
+  <label>起始時間<br><input type="datetime-local" name="start_dt" required></label>
+  <label>結束時間<br><input type="datetime-local" name="end_dt" required></label>
+  <button type="submit">一鍵完成</button>
+</form>
+
+<h2>或依序手動操作</h2>
 <ol class="flow-steps">
   <li><a href="{{ url_for('import_gmail.index') }}">從 Gmail 匯入今日新聞信件</a></li>
   <li><a href="{{ url_for('scraping.index') }}">抓取留用新聞正文</a></li>

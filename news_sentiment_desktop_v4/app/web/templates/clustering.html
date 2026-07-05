@@ -25,10 +25,16 @@
 </div>
 {% endmacro %}
 
-<p class="muted">拖曳新聞卡片即可在「未分類」與「選定議題」之間移動；點卡片可在右側預覽正文。</p>
+<p class="muted">拖曳新聞卡片即可在「未留用」「未分類」與「選定議題」之間移動；點卡片可在右側預覽正文。
+  把未留用新聞拖到未分類或某個議題，會自動改回留用（人工搶救）。</p>
 
 <div class="cluster-board">
   <div class="board-col">
+    <h3>未留用新聞（<span id="not-retained-count">{{ not_retained|length }}</span>）</h3>
+    <div class="drop-zone" id="not-retained-list" ondragover="allowDrop(event)" ondrop="handleDrop(event, '__not_retained__')">
+      {% for it in not_retained %}{{ news_card(it) }}{% endfor %}
+    </div>
+
     <h3>未分類新聞（<span id="unclustered-count">{{ unclustered|length }}</span>）</h3>
     <div class="drop-zone" id="unclustered-list" ondragover="allowDrop(event)" ondrop="handleDrop(event, '__unassign__')">
       {% for it in unclustered %}{{ news_card(it) }}{% endfor %}
@@ -116,6 +122,8 @@ function handleDrop(event, target) {
 }
 
 function updateCounts() {
+  document.getElementById("not-retained-count").textContent =
+    document.getElementById("not-retained-list").querySelectorAll(".news-card").length;
   document.getElementById("unclustered-count").textContent =
     document.getElementById("unclustered-list").querySelectorAll(".news-card").length;
   document.querySelectorAll("#topic-select option").forEach(opt => {

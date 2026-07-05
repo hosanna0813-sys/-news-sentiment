@@ -51,8 +51,21 @@ function pollJob(jobId, onDone) {
       const pct = Math.round((data.progress_current / total) * 100);
       if (bar) bar.style.width = pct + "%";
       if (label) {
-        label.textContent = `${data.progress_current}/${data.total_items}` +
-          `（成功 ${data.success_count}、失敗 ${data.failed_count}、略過 ${data.skipped_count}）— ${data.status}`;
+        // 「一鍵完成」工作（job_type=pipeline）用 params.stage_label 顯示目前
+        // 跑到哪個階段（匯入/抓正文/留用初判/議題分群），比單純的項目數更有意義；
+        // 一般批次工作沒有這個欄位，維持原本的數字進度顯示。
+        if (data.params && data.params.stage_label) {
+          label.textContent = `階段 ${data.progress_current}/${data.params.stage_count}：` +
+            `${data.params.stage_label}`;
+        } else {
+          label.textContent = `${data.progress_current}/${data.total_items}` +
+            `（成功 ${data.success_count}、失敗 ${data.failed_count}、略過 ${data.skipped_count}）— ${data.status}`;
+        }
+      }
+      if (data.status === "failed") {
+        // 停止輪詢但不重新整理頁面，讓失敗訊息（例如匯入失敗的原因）留在畫面上，
+        // 不要一秒後又被整頁重載蓋掉。
+        return;
       }
       if (data.status === "completed" || data.status === "cancelled") {
         if (onDone) onDone();

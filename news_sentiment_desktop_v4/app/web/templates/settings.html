@@ -50,6 +50,16 @@
   <label>主旨關鍵字（選填）<br>
     <input type="text" name="subject_keyword" value="{{ gmail.subject_keyword }}" placeholder="例：新聞監測報告">
   </label>
+
+  <h2>議題／關鍵字彙整表</h2>
+  <p class="muted">貼上業務關注議題與關鍵字對照表（可直接沿用 KEYPO 的布林檢索語法），
+    AI 執行留用初判與議題分群時會參考這份清單，判斷更精準。不會做程式端的關鍵字比對，
+    是直接把整段文字交給 AI 理解語意，所以格式不需要完全工整。</p>
+  <label>
+    <textarea name="keyword_taxonomy" rows="12" style="width:100%; font-family:monospace;"
+              placeholder="議題　關鍵字&#10;內政部相關　內政部|內政部長|劉世芳|...">{{ keyword_taxonomy }}</textarea>
+  </label>
+
   <button type="submit">儲存設定</button>
 </form>
 {% endblock %}

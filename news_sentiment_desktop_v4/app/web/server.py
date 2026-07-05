@@ -36,6 +36,7 @@ def create_app() -> Flask:
     from app.web.routes.clustering import clustering_bp
     from app.web.routes.export import export_bp
     from app.web.routes.jobs import jobs_bp
+    from app.web.routes.pipeline import pipeline_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(dashboard_bp)
@@ -46,6 +47,7 @@ def create_app() -> Flask:
     app.register_blueprint(clustering_bp)
     app.register_blueprint(export_bp)
     app.register_blueprint(jobs_bp)
+    app.register_blueprint(pipeline_bp)
 
     register_auth_gate(app)
 

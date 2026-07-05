@@ -55,7 +55,7 @@ def _wait_job(client, job_url_location, timeout=5.0):
     status = None
     while time.time() < deadline:
         status = client.get(f"/jobs/{job_id}/status").get_json()
-        if status["status"] in ("completed", "cancelled"):
+        if status["status"] in ("completed", "cancelled", "failed"):
             break
         time.sleep(0.05)
     return status
@@ -385,3 +385,135 @@ def test_export_download_returns_docx(logged_in_client, web_app):
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
     assert len(resp.data) > 0
+
+
+def test_keyword_taxonomy_saved_and_injected_into_context(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    resp = logged_in_client.post(
+        "/settings",
+        data={"sender_email_filter": "", "subject_keyword": "",
+              "keyword_taxonomy": "警政/治安\t槍擊|酒駕|掃黑"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    ctx.reload_settings()
+    assert "槍擊" in ctx.settings.keyword_taxonomy
+
+    from app.web.routes.retention import build_keyword_context
+    context_text = build_keyword_context(ctx)
+    assert "槍擊" in context_text
+    assert "業務關注議題" in context_text
+
+
+def test_clustering_move_to_not_retained_and_rescue_back(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="新聞一", source="來源A", retained=True))
+
+    # 標記為未留用
+    resp = logged_in_client.post(
+        "/clustering/move", data={"row_id": "r1", "target": "__not_retained__"}, follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    item = ctx.news_repo.get("r1")
+    assert item.retained == 0
+    assert item.retention_judged_by == "human"
+
+    # 從未留用清單拖到未分類，應自動搶救回留用
+    resp = logged_in_client.post(
+        "/clustering/move", data={"row_id": "r1", "target": "__unassign__"}, follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    item = ctx.news_repo.get("r1")
+    assert item.retained == 1
+    assert item.retention_status == "留用"
+
+
+def test_clustering_page_shows_not_retained_column(logged_in_client, web_app):
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="被排除的新聞", source="來源A", retained=False))
+
+    resp = logged_in_client.get("/clustering")
+    assert resp.status_code == 200
+    html = resp.data.decode("utf-8")
+    assert "not-retained-list" in html
+    assert "未留用新聞" in html
+
+
+def test_pipeline_run_end_to_end(logged_in_client, web_app, monkeypatch):
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.settings.gmail.sender_email_filter = "news@example.com"
+    ctx.save_settings()
+
+    fake_items = [
+        NewsItem(row_id=f"r{i}", title=f"新聞{i}", source="來源",
+                 body_text=("正文內容" * 20), body_word_count=200)
+        for i in range(1, 5)
+    ]
+
+    class FakeImportResult:
+        items = fake_items
+
+    import app.web.routes.pipeline as pipeline_module
+    monkeypatch.setattr(
+        pipeline_module, "import_from_gmail",
+        lambda gmail_settings, start_dt, end_dt: FakeImportResult(),
+    )
+
+    def fake_call_with_tool(task, system_prompt, user_content, tool_name, tool_schema, **kw):
+        if task == "retention_prefilter":
+            return FakeResult({"judgements": [
+                {"row_id": it.row_id, "is_relevant": True} for it in fake_items]})
+        if task == "retention_judgement":
+            return FakeResult({"judgements": [
+                {"row_id": it.row_id, "business_relevance": 30, "response_requirement": 10,
+                 "political_sensitivity": 5, "media_attention": 5, "public_impact": 5,
+                 "executive_bonus": 0, "final_score": 55, "priority_stars": 4,
+                 "should_respond": True, "is_moi_core_business": False} for it in fake_items]})
+        if task == "topic_clustering":
+            return FakeResult({"topics": [
+                {"topic_id": "cand_1", "topic_name": "議題X",
+                 "member_row_ids": [it.row_id for it in fake_items], "reason": "", "confidence": 0.9},
+            ]})
+        if task == "topic_merge":
+            return FakeResult({"merged_groups": [
+                {"source_topic_ids": ["cand_1"], "final_topic_name": "議題X", "reason": ""},
+            ]})
+        raise AssertionError(f"unexpected task {task}")
+
+    ctx.gateway.call_with_tool = fake_call_with_tool
+
+    resp = logged_in_client.post(
+        "/pipeline/run", data={"start_dt": "2026-01-01T00:00", "end_dt": "2026-01-02T00:00"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].startswith("/clustering?job_id=")
+
+    status = _wait_job(logged_in_client, resp.headers["Location"], timeout=10)
+    assert status["status"] == "completed"
+    assert status["params"]["stage_label"] == "完成"
+
+    assert len(ctx.news_repo.list_all()) == 4
+    for it in fake_items:
+        assert ctx.news_repo.get(it.row_id).retained == 1
+    topics = ctx.topic_repo.list_active()
+    assert any(t.topic_name == "議題X" for t in topics)
+
+
+def test_pipeline_run_reports_gmail_import_failure(logged_in_client, web_app, monkeypatch):
+    import app.web.routes.pipeline as pipeline_module
+    from app.services.gmail.gmail_importer import GmailImportError
+
+    def fake_import(gmail_settings, start_dt, end_dt):
+        raise GmailImportError("找不到符合條件的信件")
+
+    monkeypatch.setattr(pipeline_module, "import_from_gmail", fake_import)
+
+    resp = logged_in_client.post(
+        "/pipeline/run", data={"start_dt": "2026-01-01T00:00", "end_dt": "2026-01-02T00:00"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    status = _wait_job(logged_in_client, resp.headers["Location"], timeout=10)
+    assert status["status"] == "failed"
+    assert "找不到符合條件的信件" in status["params"]["stage_label"]

@@ -153,6 +153,29 @@ schemas) — no business logic is duplicated. What differs, and why:
   var before falling back to keyring; Gmail OAuth client id/secret and a shared
   login password (`app/web/auth.py`, no per-user accounts) come from env vars too
   (`GMAIL_OAUTH_CLIENT_ID`/`_SECRET`, `WEB_SHARED_PASSWORD`).
+- **One-click pipeline** (`app/web/routes/pipeline.py`): chains import → scrape →
+  retention → clustering in one background thread. Each stage's batching/prompt
+  logic lives in a single `build_*_job_inputs(ctx)` function per page
+  (`retention.py`/`clustering.py`/`scraping.py`, each returning `(batches,
+  process_fn)`) that both the individual step's route AND pipeline.py call — no
+  duplicated batch-processing glue. `job_runner.run_batch_job_sync()` is the
+  blocking counterpart to `start_batch_job()` (same `_run_batches()` core, no
+  nested thread) for use inside pipeline's own background thread. Progress for a
+  `job_type="pipeline"` job is coarse (stage 0-4, not item-level); the current
+  stage name rides in `JobRecord.params_json` and `pollJob()` in `base.html`
+  prefers `params.stage_label` when present.
+- **Keyword taxonomy** (`AppSettings.keyword_taxonomy`, settings page textarea):
+  free-text topic/keyword reference material (e.g. KEYPO boolean queries) is
+  never parsed — it's prepended to the `human_examples` string already passed to
+  `retention_service.judge_batch`/`clustering_service.cluster_batch` via
+  `retention.py::build_keyword_context()`, letting the model use it as context
+  rather than risking a hand-rolled parser on inconsistently-punctuated
+  human-curated input.
+- **Clustering board's "未留用新聞" column**: lets an editor drag an AI/human
+  "not retained" item straight into a topic or the unclassified list; the move
+  handler flips `retained` back to 1 (and clears it when dragged the other way
+  onto the not-retained zone) so the retention state never silently disagrees
+  with topic membership.
 
 ## Known incomplete/simplified areas (per README, not hidden)
 

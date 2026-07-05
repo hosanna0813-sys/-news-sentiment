@@ -108,6 +108,7 @@ class AppSettingsRepository:
             settings.word_export.__dict__.update(data.get("word_export", {}))
             settings.gmail.__dict__.update(data.get("gmail", {}))
             settings.task_models = data.get("task_models", settings.task_models)
+            settings.keyword_taxonomy = data.get("keyword_taxonomy", "")
             return settings
         except Exception:
             return AppSettings()

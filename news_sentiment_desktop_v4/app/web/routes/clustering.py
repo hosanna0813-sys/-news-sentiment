@@ -1,8 +1,13 @@
 """議題分群頁 — 對應桌面版 app/workers/clustering_worker.py，改寫成背景 Thread
 版本；核心 AI 呼叫完全重用 app/services/clustering/clustering_service.py。
 
-人工調整（規格十的操作項目，網頁版以下拉選單/按鈕取代桌面版的拖曳）：
-    搬移新聞到既有議題／新議題／標記不納入、議題改名、合併議題、刪除空議題。
+人工調整（規格十的操作項目，網頁版以拖曳看板取代桌面版的拖曳清單）：
+    搬移新聞到既有議題／新議題／標記不納入／標記不留用、議題改名、合併議題、
+    刪除空議題。
+
+build_clustering_job_inputs() 是這裡與「一鍵完成」流程
+（app/web/routes/pipeline.py）共用的組裝邏輯，理由同 retention.py 的
+build_retention_job_inputs()。
 """
 from __future__ import annotations
 
@@ -12,6 +17,7 @@ from flask import Blueprint, redirect, render_template, request, url_for
 
 from app.web.server import get_context
 from app.web.job_runner import start_batch_job, BatchOutcome
+from app.web.routes.retention import build_keyword_context
 from app.models.topic import Topic
 from app.repositories.news_repository import NewsRepository
 from app.repositories.topic_repository import TopicRepository
@@ -42,25 +48,32 @@ def index():
     ctx = get_context()
     topics = ctx.topic_repo.list_active()
     news_by_topic = {t.topic_id: ctx.news_repo.list_by_topic(t.topic_id) for t in topics}
-    unclustered = [it for it in ctx.news_repo.list_all()
-                   if it.retained and not it.final_topic_id]
+    all_items = ctx.news_repo.list_all()
+    unclustered = [it for it in all_items if it.retained and not it.final_topic_id]
+    # 「未留用」清單：讓編輯能直接在分群頁把 AI／人工判斷錯誤的不留用新聞
+    # 拖回來搶救，不必先跳回留用初判頁勾選再回來這裡分群。
+    not_retained = [it for it in all_items if not it.retained]
+
     job_id = request.args.get("job_id")
     if not job_id:
-        # 同 retention 頁：沒帶 job_id 時也主動查一次有沒有跑到一半的分群工作，
-        # 避免重新整理後進度條消失被誤會成卡住。
-        running = JobRepository().list_resumable("clustering")
+        # 沒帶 job_id 時也主動查一次有沒有跑到一半的分群工作（也涵蓋「一鍵完成」
+        # 用的 pipeline 工作類型），避免重新整理後進度條消失被誤會成卡住。
+        running = (JobRepository().list_resumable("clustering")
+                   or JobRepository().list_resumable("pipeline"))
         if running:
             job_id = running[0].job_id
 
     # 拖曳卡片點擊時，右側預覽面板純用前端 JS 從這份查表取資料顯示，
     # 不必為了「點一下看正文」多打一次後端請求。
     news_lookup = {it.row_id: _preview_payload(it) for it in unclustered}
+    news_lookup.update({it.row_id: _preview_payload(it) for it in not_retained})
     for members in news_by_topic.values():
         for it in members:
             news_lookup[it.row_id] = _preview_payload(it)
 
     return render_template("clustering.html", topics=topics, news_by_topic=news_by_topic,
-                            unclustered=unclustered, job_id=job_id, news_lookup=news_lookup)
+                            unclustered=unclustered, not_retained=not_retained,
+                            job_id=job_id, news_lookup=news_lookup)
 
 
 def _build_human_examples(feedback_repo, news_repo) -> str:
@@ -80,11 +93,11 @@ def _build_human_examples(feedback_repo, news_repo) -> str:
     return "\n".join(lines)
 
 
-@clustering_bp.route("/clustering/run", methods=["POST"])
-def run():
-    ctx = get_context()
-    incremental = request.form.get("incremental") == "on"
-
+def build_clustering_job_inputs(ctx, incremental: bool):
+    """回傳 (buckets, process_fn)；沒有可分群新聞時回傳 ([], None)。
+    正文不足的新聞會在這裡直接標記「正文不足待人工確認」並寫回資料庫
+    （即使最終沒有任何可分群新聞，這個標記動作也要做，所以呼叫端不能因為
+    buckets 是空的就整段跳過——這點跟 retention 的「沒有就直接不建工作」不同）。"""
     all_items = ctx.news_repo.list_retained_with_body()
     existing_topics = []
     existing_topic_ids = set()
@@ -110,9 +123,13 @@ def run():
     ])
 
     if not clusterable:
-        return redirect(url_for("clustering.index"))
+        return [], None
 
+    keyword_context = build_keyword_context(ctx)
     human_examples = _build_human_examples(FeedbackRepository(), NewsRepository())
+    if keyword_context:
+        human_examples = f"{keyword_context}\n\n{human_examples}" if human_examples else keyword_context
+
     buckets = bucket_candidates(clusterable, ctx.settings.api.batch_size_clustering)
     clustering_cfg = get_active_prompt(ctx.prompt_repo, "topic_clustering")
     clustering_schema = json.loads(clustering_cfg.tool_schema_json)
@@ -186,6 +203,16 @@ def run():
             thread_news_repo.update_fields_bulk(news_updates)
         return BatchOutcome(success=True, success_count=len(bucket))
 
+    return buckets, process
+
+
+@clustering_bp.route("/clustering/run", methods=["POST"])
+def run():
+    ctx = get_context()
+    incremental = request.form.get("incremental") == "on"
+    buckets, process = build_clustering_job_inputs(ctx, incremental)
+    if not buckets:
+        return redirect(url_for("clustering.index"))
     job_id = start_batch_job("clustering", buckets, process, JobRepository(), BatchRepository())
     return redirect(url_for("clustering.index", job_id=job_id))
 
@@ -194,37 +221,52 @@ def run():
 def move():
     ctx = get_context()
     row_id = request.form["row_id"]
-    target = request.form["target"]  # 既有 topic_id / "__new__" / "__unassign__"
+    # 既有 topic_id／"__new__"／"__unassign__"／"__not_retained__"
+    target = request.form["target"]
     new_topic_name = request.form.get("new_topic_name", "").strip()
     item = ctx.news_repo.get(row_id)
     if item is None:
         return redirect(url_for("clustering.index"))
 
-    old_topic_name = item.final_topic_name or "（未分類）"
+    old_topic_name = item.final_topic_name or ("（未留用）" if not item.retained else "（未分類）")
+    was_not_retained = not item.retained
 
-    if target == "__unassign__":
-        ctx.news_repo.update_fields(row_id, {"final_topic_id": "", "final_topic_name": ""})
-        new_label = "（未分類）"
-    elif target == "__new__":
-        new_topic = Topic(topic_id=new_id("ftopic_"), topic_name=new_topic_name or "新議題")
-        ctx.topic_repo.upsert_one(new_topic)
-        ctx.news_repo.update_fields(row_id, {"final_topic_id": new_topic.topic_id,
-                                              "final_topic_name": new_topic.topic_name})
-        new_label = new_topic.topic_name
+    if target == "__not_retained__":
+        ctx.news_repo.update_fields(row_id, {
+            "retained": 0, "final_topic_id": "", "final_topic_name": "",
+            "retention_status": "人工不留用", "retention_judged_by": "human",
+        })
+        new_label = "（未留用）"
     else:
-        target_topic = ctx.topic_repo.get(target)
-        if target_topic is None:
-            return redirect(url_for("clustering.index"))
-        ctx.news_repo.update_fields(row_id, {"final_topic_id": target_topic.topic_id,
-                                              "final_topic_name": target_topic.topic_name})
-        new_label = target_topic.topic_name
+        # 從「未留用」清單拖到未分類／議題，等於人工搶救：一併把 retained 改回 1，
+        # 否則這則新聞會停留在「已分群但實際上仍是不留用」的矛盾狀態。
+        rescue_fields = {}
+        if was_not_retained:
+            rescue_fields = {"retained": 1, "retention_status": "留用", "retention_judged_by": "human"}
+
+        if target == "__unassign__":
+            ctx.news_repo.update_fields(row_id, {**rescue_fields, "final_topic_id": "", "final_topic_name": ""})
+            new_label = "（未分類）"
+        elif target == "__new__":
+            new_topic = Topic(topic_id=new_id("ftopic_"), topic_name=new_topic_name or "新議題")
+            ctx.topic_repo.upsert_one(new_topic)
+            ctx.news_repo.update_fields(row_id, {**rescue_fields, "final_topic_id": new_topic.topic_id,
+                                                  "final_topic_name": new_topic.topic_name})
+            new_label = new_topic.topic_name
+        else:
+            target_topic = ctx.topic_repo.get(target)
+            if target_topic is None:
+                return redirect(url_for("clustering.index"))
+            ctx.news_repo.update_fields(row_id, {**rescue_fields, "final_topic_id": target_topic.topic_id,
+                                                  "final_topic_name": target_topic.topic_name})
+            new_label = target_topic.topic_name
 
     log_feedback(FeedbackRepository(), batch_id="", entity_type="clustering", entity_id=row_id,
                  ai_original_value=old_topic_name, human_final_value=new_label,
                  action="human_move", operator="web")
     # 拖放操作用背景 fetch 送出（見 clustering.html），成功後前端直接把卡片
     # DOM 節點搬到目標欄位，不需要整頁重新導向重繪一次（議題一多，那份 HTML
-    # 不小，每拖一次都整頁重刷會很卡，捲動位置與已選議題也會被打斷）。
+    # 不小，每拖一次都整頁重刷會很卡，捲動位置與已選議題都會被打斷）。
     if request.headers.get("X-Requested-With") == "fetch":
         return ("", 204)
     return redirect(url_for("clustering.index"))

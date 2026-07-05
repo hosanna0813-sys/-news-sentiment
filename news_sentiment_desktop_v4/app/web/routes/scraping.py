@@ -29,12 +29,14 @@ def index():
                             job_id=request.args.get("job_id"))
 
 
-@scraping_bp.route("/scraping/run", methods=["POST"])
-def run():
-    ctx = get_context()
+def build_scraping_job_inputs(ctx):
+    """回傳 (batches, process_fn)；沒有待抓取新聞時回傳 ([], None)。
+    與 retention.py / clustering.py 的 build_*_job_inputs() 同樣理由：
+    /scraping/run 與「一鍵完成」流程（app/web/routes/pipeline.py）共用同一份，
+    不重複維護。"""
     items = ctx.news_repo.list_retained_without_body()
     if not items:
-        return redirect(url_for("scraping.index"))
+        return [], None
 
     scraping_settings = ctx.settings.scraping
     batches = [items[i:i + BATCH_SIZE] for i in range(0, len(items), BATCH_SIZE)]
@@ -84,5 +86,14 @@ def run():
         thread_news_repo.update_fields_bulk(updates)
         return BatchOutcome(success=True, success_count=success_count, skipped_count=skipped_count)
 
+    return batches, process
+
+
+@scraping_bp.route("/scraping/run", methods=["POST"])
+def run():
+    ctx = get_context()
+    batches, process = build_scraping_job_inputs(ctx)
+    if not batches:
+        return redirect(url_for("scraping.index"))
     job_id = start_batch_job("scraping", batches, process, JobRepository(), BatchRepository())
     return redirect(url_for("scraping.index", job_id=job_id))

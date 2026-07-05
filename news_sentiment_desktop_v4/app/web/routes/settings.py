@@ -27,8 +27,9 @@ def index():
     if request.method == "POST":
         ctx.settings.gmail.sender_email_filter = request.form.get("sender_email_filter", "").strip()
         ctx.settings.gmail.subject_keyword = request.form.get("subject_keyword", "").strip()
+        ctx.settings.keyword_taxonomy = request.form.get("keyword_taxonomy", "").strip()
         ctx.save_settings()
-        flash("Gmail 設定已儲存", "success")
+        flash("設定已儲存", "success")
         return redirect(url_for("settings.index"))
 
     api_key_configured = bool(os.environ.get("ANTHROPIC_API_KEY"))
@@ -43,6 +44,7 @@ def index():
     return render_template(
         "settings.html",
         gmail=ctx.settings.gmail,
+        keyword_taxonomy=ctx.settings.keyword_taxonomy,
         api_key_configured=api_key_configured,
         api_key_masked=mask_api_key(os.environ.get("ANTHROPIC_API_KEY")),
         oauth_client_configured=oauth_client_configured,
