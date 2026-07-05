@@ -173,7 +173,7 @@ def export_simple_topic_list(
         if not items:
             continue  # 空議題跳過（不佔編號）
         idx += 1
-        doc.add_heading(f"{idx}. {topic.topic_name}", level=1)
+        doc.add_heading(f"議題{idx}. {topic.topic_name}", level=1)
         for it in items:
             # 標題行格式：「新聞來源-標題」；來源為空時只印標題
             doc.add_paragraph(f"{it.source}-{it.title}" if it.source else it.title)

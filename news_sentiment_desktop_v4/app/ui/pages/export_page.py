@@ -97,8 +97,10 @@ class ExportPage(QWidget):
             if not topics:
                 self.status_label.setText("目前沒有議題可匯出，請先完成議題分群")
                 return
+            from datetime import datetime
+            default_name = f"新聞議題清單_{datetime.now():%Y%m%d_%H%M}.docx"
             path, _ = QFileDialog.getSaveFileName(
-                self, "另存簡易議題清單", str(get_exports_dir() / "新聞議題清單.docx"),
+                self, "另存簡易議題清單", str(get_exports_dir() / default_name),
                 "Word 文件 (*.docx)")
             if not path:
                 return
