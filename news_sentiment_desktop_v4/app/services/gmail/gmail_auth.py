@@ -56,7 +56,8 @@ def run_oauth_flow(client_id: str, client_secret: str):
     return creds
 
 
-def build_web_flow(client_id: str, client_secret: str, redirect_uri: str):
+def build_web_flow(client_id: str, client_secret: str, redirect_uri: str,
+                    state: Optional[str] = None):
     """建立網頁版（雲端部署）用的 OAuth Flow——桌面版用 InstalledAppFlow +
     run_local_server() 在無頭雲端容器上無法執行（容器裡沒有瀏覽器，且
     localhost callback 對外部使用者的瀏覽器沒有意義），改用標準的
@@ -64,7 +65,13 @@ def build_web_flow(client_id: str, client_secret: str, redirect_uri: str):
     固定 redirect_uri → 用 authorization code 換 token。
     對應的 OAuth Client 需在 Google Cloud Console 建立為 Web application
     類型（非桌面版用的 Desktop app），Authorized redirect URI 需與
-    redirect_uri 完全一致。"""
+    redirect_uri 完全一致。
+
+    state：callback 路由重建 Flow 時，帶入 /gmail/oauth/start 產生的 state，
+    用於 CSRF 比對（不帶則不驗證）。PKCE 的 code_verifier 不在這裡處理——
+    因為 /start 與 /callback 是兩個獨立的 HTTP request、各自建立新的 Flow
+    物件，code_verifier 必須由呼叫端（web/routes/settings.py）存在 Flask
+    session 裡跨兩個 request 傳遞，見該檔案的說明。"""
     if not client_id or not client_secret:
         raise GmailAuthError("尚未設定 Gmail OAuth Client ID / Client Secret")
     try:
@@ -81,7 +88,7 @@ def build_web_flow(client_id: str, client_secret: str, redirect_uri: str):
             "redirect_uris": [redirect_uri],
         }
     }
-    flow = Flow.from_client_config(client_config, SCOPES, redirect_uri=redirect_uri)
+    flow = Flow.from_client_config(client_config, SCOPES, redirect_uri=redirect_uri, state=state)
     return flow
 
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.web.server import get_context
 from app.services.gmail.gmail_auth import (
@@ -61,7 +61,16 @@ def gmail_oauth_start():
     except GmailAuthError as e:
         flash(str(e), "error")
         return redirect(url_for("settings.index"))
-    auth_url, _state = flow.authorization_url(access_type="offline", prompt="consent")
+
+    # PKCE：Google 現在要求授權碼交換時附上 code_verifier。/start 與
+    # /callback 是兩個獨立的 HTTP request、各自建立新的 Flow 物件，
+    # 所以產生的 code_verifier（與 state，用於 CSRF 比對）要存進 Flask
+    # session，讓 /callback 讀回來用在同一次交換上，否則 Google 會回報
+    # 「invalid_grant: Missing code verifier.」。
+    flow.autogenerate_code_verifier = True
+    auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
+    session["gmail_oauth_state"] = state
+    session["gmail_oauth_code_verifier"] = flow.code_verifier
     return redirect(auth_url)
 
 
@@ -70,8 +79,17 @@ def gmail_oauth_callback():
     client_id = os.environ.get("GMAIL_OAUTH_CLIENT_ID", "")
     client_secret = os.environ.get("GMAIL_OAUTH_CLIENT_SECRET", "")
     redirect_uri = url_for("settings.gmail_oauth_callback", _external=True)
+    code_verifier = session.pop("gmail_oauth_code_verifier", None)
+    expected_state = session.pop("gmail_oauth_state", None)
+
+    if not code_verifier:
+        flash("Gmail 連接失敗：找不到本次授權的 code_verifier（工作階段可能已逾時），"
+              "請重新點擊「連接 Gmail」再試一次", "error")
+        return redirect(url_for("settings.index"))
+
     try:
-        flow = build_web_flow(client_id, client_secret, redirect_uri)
+        flow = build_web_flow(client_id, client_secret, redirect_uri, state=expected_state)
+        flow.code_verifier = code_verifier
         complete_web_flow(flow, request.url)
         flash("Gmail 已成功連接", "success")
     except GmailAuthError as e:

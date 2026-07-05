@@ -90,6 +90,54 @@ def test_settings_save_and_reload(logged_in_client, web_app):
     assert ctx.settings.gmail.subject_keyword == "監測報告"
 
 
+def test_gmail_oauth_start_then_callback_passes_same_code_verifier(client, monkeypatch):
+    """迴歸測試：/start 產生的 PKCE code_verifier 必須經由 session 原封不動地
+    傳到 /callback 重建的 Flow 物件上，否則 Google 會回
+    'invalid_grant: Missing code verifier.'（這是這次修的正式 bug）。"""
+    monkeypatch.setenv("GMAIL_OAUTH_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_OAUTH_CLIENT_SECRET", "csecret")
+    client.post("/login", data={"password": WEB_PASSWORD})
+
+    class _FakeStartFlow:
+        code_verifier = None
+        autogenerate_code_verifier = False
+
+        def authorization_url(self, **kw):
+            self.code_verifier = "fake-verifier-abc"
+            return "https://accounts.google.com/fake-auth-url", "fake-state-xyz"
+
+    captured = {}
+
+    class _FakeCallbackFlow:
+        def __init__(self, *a, **kw):
+            self.code_verifier = None
+        credentials = None
+
+    import app.web.routes.settings as settings_module
+
+    def fake_build_web_flow(client_id, client_secret, redirect_uri, state=None):
+        if "start_called" not in captured:
+            captured["start_called"] = True
+            return _FakeStartFlow()
+        captured["callback_state"] = state
+        return _FakeCallbackFlow()
+
+    def fake_complete_web_flow(flow, authorization_response):
+        captured["callback_code_verifier"] = flow.code_verifier
+
+    monkeypatch.setattr(settings_module, "build_web_flow", fake_build_web_flow)
+    monkeypatch.setattr(settings_module, "complete_web_flow", fake_complete_web_flow)
+
+    resp = client.get("/gmail/oauth/start", follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "https://accounts.google.com/fake-auth-url"
+
+    resp = client.get("/gmail/oauth/callback?code=abc&state=fake-state-xyz", follow_redirects=True)
+    assert resp.status_code == 200
+    assert captured["callback_code_verifier"] == "fake-verifier-abc"
+    assert captured["callback_state"] == "fake-state-xyz"
+
+
 def test_settings_shows_exact_oauth_redirect_uri(client, monkeypatch):
     # redirect_uri_mismatch（Google 400 錯誤）多半是使用者手動猜測/謄寫網址時
     # 打錯，設定頁改成直接顯示程式實際會用的 redirect_uri 供逐字複製，
