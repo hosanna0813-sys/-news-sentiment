@@ -554,3 +554,80 @@ def test_retention_few_shot_examples_survive_clear_data(logged_in_client, web_ap
     from app.web.routes.retention import _build_human_examples
     examples = _build_human_examples(ctx.feedback_repo, ctx.news_repo)
     assert "某某部門重大政策新聞" in examples
+
+
+def test_pipeline_survives_concurrent_page_requests(logged_in_client, web_app, monkeypatch):
+    """迴歸測試：一鍵完成的背景執行緒過去直接沿用 ctx.news_repo/ctx.topic_repo/
+    ctx.prompt_repo（跟主執行緒共用同一個 SQLite connection 物件），使用者若在
+    流程跑的同時瀏覽 /clustering 等頁面（主執行緒也會用到同一批 ctx repo），
+    兩個執行緒真的並行存取同一個 connection，曾在實際部署中造成流程悄悄跑不完、
+    畫面卻沒有任何錯誤訊息。現在背景執行緒改用 _ThreadLocalCtx 各自重建 repo，
+    這裡在流程跑的同時反覆打其他頁面確認不會出錯、流程仍能正常跑完。
+    """
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.settings.gmail.sender_email_filter = "news@example.com"
+    ctx.save_settings()
+
+    fake_items = [
+        NewsItem(row_id=f"r{i}", title=f"新聞{i}", source="來源",
+                 body_text=("正文內容" * 20), body_word_count=200)
+        for i in range(1, 6)
+    ]
+
+    class FakeImportResult:
+        items = fake_items
+
+    import app.web.routes.pipeline as pipeline_module
+    monkeypatch.setattr(
+        pipeline_module, "import_from_gmail",
+        lambda gmail_settings, start_dt, end_dt: FakeImportResult(),
+    )
+
+    def fake_call_with_tool(task, system_prompt, user_content, tool_name, tool_schema, **kw):
+        time.sleep(0.02)  # 模擬真實 API 呼叫的延遲，讓背景執行緒有時間跟主執行緒重疊
+        if task == "retention_prefilter":
+            return FakeResult({"judgements": [
+                {"row_id": it.row_id, "is_relevant": True} for it in fake_items]})
+        if task == "retention_judgement":
+            return FakeResult({"judgements": [
+                {"row_id": it.row_id, "business_relevance": 30, "response_requirement": 10,
+                 "political_sensitivity": 5, "media_attention": 5, "public_impact": 5,
+                 "executive_bonus": 0, "final_score": 55, "priority_stars": 4,
+                 "should_respond": True, "is_moi_core_business": False} for it in fake_items]})
+        if task == "topic_clustering":
+            return FakeResult({"topics": [
+                {"topic_id": "cand_1", "topic_name": "議題X",
+                 "member_row_ids": [it.row_id for it in fake_items], "reason": "", "confidence": 0.9},
+            ]})
+        if task == "topic_merge":
+            return FakeResult({"merged_groups": [
+                {"source_topic_ids": ["cand_1"], "final_topic_name": "議題X", "reason": ""},
+            ]})
+        raise AssertionError(f"unexpected task {task}")
+
+    ctx.gateway.call_with_tool = fake_call_with_tool
+
+    resp = logged_in_client.post(
+        "/pipeline/run", data={"start_dt": "2026-01-01T00:00", "end_dt": "2026-01-02T00:00"},
+        follow_redirects=False,
+    )
+    job_id = resp.headers["Location"].split("job_id=")[1]
+
+    # 流程還在跑的時候，反覆打會用到 ctx.news_repo/ctx.topic_repo/ctx.prompt_repo
+    # 的頁面，確認不會跟背景執行緒的 repo 存取互相干擾出錯。
+    deadline = time.time() + 10
+    request_errors = []
+    while time.time() < deadline:
+        status = logged_in_client.get(f"/jobs/{job_id}/status").get_json()
+        for path in ("/clustering", "/retention", "/"):
+            r = logged_in_client.get(path)
+            if r.status_code != 200:
+                request_errors.append((path, r.status_code))
+        if status["status"] in ("completed", "failed", "cancelled"):
+            break
+        time.sleep(0.05)
+
+    assert request_errors == []
+    assert status["status"] == "completed"
+    assert len(ctx.news_repo.list_all()) == 5
+    assert any(t.topic_name == "議題X" for t in ctx.topic_repo.list_active())
