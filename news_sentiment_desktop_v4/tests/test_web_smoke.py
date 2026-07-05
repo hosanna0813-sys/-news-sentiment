@@ -491,7 +491,9 @@ def test_pipeline_run_end_to_end(logged_in_client, web_app, monkeypatch):
 
     status = _wait_job(logged_in_client, resp.headers["Location"], timeout=10)
     assert status["status"] == "completed"
-    assert status["params"]["stage_label"] == "完成"
+    # 完成訊息要秀出實際留用/分群數字，不能只說「完成」兩個字讓人猜結果如何
+    assert "留用 4 則" in status["params"]["stage_label"]
+    assert "1 個議題" in status["params"]["stage_label"]
 
     assert len(ctx.news_repo.list_all()) == 4
     for it in fake_items:
@@ -499,6 +501,33 @@ def test_pipeline_run_end_to_end(logged_in_client, web_app, monkeypatch):
     topics = ctx.topic_repo.list_active()
     assert any(t.topic_name == "議題X" for t in topics)
 
+
+def test_run_batch_job_sync_announces_sub_job_before_batches_finish(web_app):
+    """迴歸測試：on_job_created 回呼必須在批次迴圈跑完「之前」就拿到 job_id，
+    這樣一鍵完成流程才能把這個 id 寫進主 Job 的 params，讓前端邊跑邊輪詢到
+    這個子步驟本身的進度（而不是等這個步驟全部跑完才知道 id）。"""
+    from app.web.job_runner import run_batch_job_sync, BatchOutcome
+    from app.repositories.job_repository import JobRepository, BatchRepository
+
+    job_repo = JobRepository()
+    batch_repo = BatchRepository()
+    announced = {}
+
+    def process(batch_items):
+        # 回呼必須已經先發生，此時子工作應已是 running 狀態
+        assert announced.get("job_id")
+        job = job_repo.get(announced["job_id"])
+        assert job.status == "running"
+        return BatchOutcome(success=True, success_count=len(batch_items))
+
+    job_id = run_batch_job_sync(
+        "scraping", [["a"], ["b"]], process, job_repo, batch_repo,
+        on_job_created=lambda jid: announced.update(job_id=jid),
+    )
+    assert announced["job_id"] == job_id
+    final = job_repo.get(job_id)
+    assert final.status == "completed"
+    assert final.success_count == 2
 
 def test_pipeline_run_reports_gmail_import_failure(logged_in_client, web_app, monkeypatch):
     import app.web.routes.pipeline as pipeline_module

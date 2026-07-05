@@ -113,13 +113,21 @@ def start_batch_job(job_type: str, item_batches: List[List[Any]],
 def run_batch_job_sync(job_type: str, item_batches: List[List[Any]],
                         process_batch_fn: Callable[[List[Any]], BatchOutcome],
                         job_repo: JobRepository, batch_repo: BatchRepository,
-                        job_label_fn: Optional[Callable[[Any], str]] = None) -> str:
+                        job_label_fn: Optional[Callable[[Any], str]] = None,
+                        on_job_created: Optional[Callable[[str], None]] = None) -> str:
     """同步版本：呼叫端（一鍵完成流程）已經在自己的背景執行緒裡，不需要再開一個
-    巢狀執行緒——直接跑完這一步驟再回傳 job_id，讓呼叫端繼續下一步驟。"""
+    巢狀執行緒——直接跑完這一步驟再回傳 job_id，讓呼叫端繼續下一步驟。
+
+    on_job_created：這個子步驟的 Job/Batch 紀錄剛建立、還沒開始跑批次迴圈時
+    立刻呼叫（帶入 job_id）。一鍵完成流程用這個回呼把子步驟的 job_id 記到自己
+    的主 Job 進度裡，讓前端可以即時輪詢子步驟本身的批次進度（第幾批/共幾批、
+    目前留用幾則等），而不是要等這個步驟完全跑完才知道。"""
     if not item_batches:
         return ""
     job_label_fn = job_label_fn or (lambda it: getattr(it, "row_id", str(it)))
     job, batch_records = _create_job_and_batches(job_type, item_batches, job_repo, batch_repo, job_label_fn)
+    if on_job_created:
+        on_job_created(job.job_id)
     _run_batches(job, job_type, batch_records, process_batch_fn, job_repo, batch_repo)
     return job.job_id
 

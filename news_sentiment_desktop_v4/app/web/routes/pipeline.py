@@ -58,11 +58,16 @@ class _ThreadLocalCtx:
         self.prompt_repo = PromptRepository()
 
 
-def _set_stage(job_repo, job_id, stage_index, label, **extra_fields):
+def _set_stage(job_repo, job_id, stage_index, label, sub_job_id=None, **extra_fields):
+    """sub_job_id：這個階段實際批次工作（scraping/retention/clustering）的
+    job_id，讓前端可以另外輪詢它自己的批次進度（第幾批、成功/失敗筆數），
+    而不是只看到一句話從頭到尾都不變的階段名稱。"""
+    params = {"stage_label": label, "stage_index": stage_index, "stage_count": len(STAGE_LABELS)}
+    if sub_job_id:
+        params["sub_job_id"] = sub_job_id
     job_repo.update(job_id, {
         "progress_current": stage_index,
-        "params_json": json.dumps({"stage_label": label, "stage_index": stage_index,
-                                    "stage_count": len(STAGE_LABELS)}, ensure_ascii=False),
+        "params_json": json.dumps(params, ensure_ascii=False),
         **extra_fields,
     })
 
@@ -89,28 +94,46 @@ def run():
         thread_ctx = _ThreadLocalCtx(ctx)
         try:
             # 1. 匯入
+            _set_stage(job_repo, job.job_id, 0, "連接 Gmail、搜尋符合條件的信件中...")
             result = import_from_gmail(thread_ctx.settings.gmail, start_dt, end_dt)
             thread_ctx.news_repo.upsert_many(result.items)
-            _set_stage(job_repo, job.job_id, 1, STAGE_LABELS[1])
+            _set_stage(job_repo, job.job_id, 1, f"已成功匯入 {len(result.items)} 則新聞，開始抓取正文")
 
             # 2. 抓正文
             batches, process = build_scraping_job_inputs(thread_ctx)
             if batches:
-                run_batch_job_sync("scraping", batches, process, job_repo, batch_repo)
-            _set_stage(job_repo, job.job_id, 2, STAGE_LABELS[2])
+                run_batch_job_sync(
+                    "scraping", batches, process, job_repo, batch_repo,
+                    on_job_created=lambda sub_id: _set_stage(
+                        job_repo, job.job_id, 1, "抓取新聞正文中", sub_job_id=sub_id),
+                )
+            scraped_count = sum(1 for it in thread_ctx.news_repo.list_all() if it.has_body)
+            _set_stage(job_repo, job.job_id, 2, f"已取得正文 {scraped_count} 則，開始 AI 留用初判")
 
             # 3. 留用初判
             batches, process = build_retention_job_inputs(thread_ctx)
             if batches:
-                run_batch_job_sync("retention", batches, process, job_repo, batch_repo)
-            _set_stage(job_repo, job.job_id, 3, STAGE_LABELS[3])
+                run_batch_job_sync(
+                    "retention", batches, process, job_repo, batch_repo,
+                    on_job_created=lambda sub_id: _set_stage(
+                        job_repo, job.job_id, 2, "AI 留用初判中", sub_job_id=sub_id),
+                )
+            retained_count = sum(1 for it in thread_ctx.news_repo.list_all() if it.retained)
+            _set_stage(job_repo, job.job_id, 3, f"留用初判完成，共留用 {retained_count} 則，開始 AI 議題分群")
 
             # 4. 議題分群（預設增量，維持已存在的議題結構）
             batches, process = build_clustering_job_inputs(thread_ctx, incremental=True)
             if batches:
-                run_batch_job_sync("clustering", batches, process, job_repo, batch_repo)
-
-            _set_stage(job_repo, job.job_id, 4, "完成", status="completed", finished_at=time.time())
+                run_batch_job_sync(
+                    "clustering", batches, process, job_repo, batch_repo,
+                    on_job_created=lambda sub_id: _set_stage(
+                        job_repo, job.job_id, 3, "AI 議題分群中", sub_job_id=sub_id),
+                )
+            topic_count = len(thread_ctx.topic_repo.list_active())
+            summary = f"完成！留用 {retained_count} 則，共分成 {topic_count} 個議題"
+            if retained_count and not topic_count:
+                summary += "（沒有議題可能是留用新聞的正文都不足，可到議題分群頁人工確認）"
+            _set_stage(job_repo, job.job_id, 4, summary, status="completed", finished_at=time.time())
         except GmailImportError as e:
             logger.warning(f"一鍵完成：Gmail 匯入失敗: {e}")
             _set_stage(job_repo, job.job_id, 0, f"匯入失敗：{e}", status="failed", finished_at=time.time())
