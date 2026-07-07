@@ -119,6 +119,64 @@ API key is stored via `keyring` (Windows Credential Manager / DPAPI), never in a
 file. `app/repositories/db.py` uses `schema_version` + `CREATE TABLE IF NOT EXISTS` / `ALTER` only
 — migrations never `DROP` existing tables; add new migrations in `_run_migrations()`.
 
+## Web mode (`app/web/`)
+
+A second UI — Flask instead of PySide6 — for teams to share one deployment (e.g. on
+Render; see README "網頁版部署到 Render"). Scope is intentionally narrower than the
+desktop app: Gmail import → scrape bodies → AI retention triage → AI clustering +
+manual adjustment → download a simple Word topic list (`word_exporter.export_
+simple_topic_list`). No summarization/stance analysis, no background scheduling —
+every step is a manual button click.
+
+It shares the same `app/services`/`app/repositories`/`app/models`/`app/prompts`
+layer as the desktop app (same SQLite DB, same `AppContext`, same AI prompts/tool
+schemas) — no business logic is duplicated. What differs, and why:
+
+- **UI**: Flask blueprints/Jinja templates (`app/web/routes/`, `app/web/templates/`)
+  instead of PySide6 pages.
+- **Gmail OAuth**: cloud containers have no browser, so `app/services/gmail/
+  gmail_auth.py` gained `build_web_flow`/`complete_web_flow` (standard "Web
+  application" authorization-code flow with a fixed redirect_uri) alongside the
+  existing `run_oauth_flow` (desktop's `InstalledAppFlow.run_local_server()`,
+  untouched).
+- **Batch execution**: `app/web/job_runner.py` is a plain-`threading.Thread` port of
+  `app/workers/batch_job_worker.py`'s sequential path — same `JobRepository`/
+  `BatchRepository` tables for progress, no QThread/Signal dependency. The web
+  retention/clustering routes re-implement the desktop workers' batching/prompt
+  orchestration as plain functions calling the same `retention_service`/
+  `clustering_service` functions (no resume-across-restart support — every run is
+  a fresh job, matching the "click once a day" usage pattern).
+- **Data directory**: `app/utils/paths.py::get_app_data_dir()` checks
+  `NEWS_SENTIMENT_DATA_DIR` first (for a mounted cloud disk) before falling back to
+  the existing Windows APPDATA / `~/.news_sentiment_desktop_v4` logic.
+- **Secrets**: `secure_key_store.load_api_key()` checks the `ANTHROPIC_API_KEY` env
+  var before falling back to keyring; Gmail OAuth client id/secret and a shared
+  login password (`app/web/auth.py`, no per-user accounts) come from env vars too
+  (`GMAIL_OAUTH_CLIENT_ID`/`_SECRET`, `WEB_SHARED_PASSWORD`).
+- **One-click pipeline** (`app/web/routes/pipeline.py`): chains import → scrape →
+  retention → clustering in one background thread. Each stage's batching/prompt
+  logic lives in a single `build_*_job_inputs(ctx)` function per page
+  (`retention.py`/`clustering.py`/`scraping.py`, each returning `(batches,
+  process_fn)`) that both the individual step's route AND pipeline.py call — no
+  duplicated batch-processing glue. `job_runner.run_batch_job_sync()` is the
+  blocking counterpart to `start_batch_job()` (same `_run_batches()` core, no
+  nested thread) for use inside pipeline's own background thread. Progress for a
+  `job_type="pipeline"` job is coarse (stage 0-4, not item-level); the current
+  stage name rides in `JobRecord.params_json` and `pollJob()` in `base.html`
+  prefers `params.stage_label` when present.
+- **Keyword taxonomy** (`AppSettings.keyword_taxonomy`, settings page textarea):
+  free-text topic/keyword reference material (e.g. KEYPO boolean queries) is
+  never parsed — it's prepended to the `human_examples` string already passed to
+  `retention_service.judge_batch`/`clustering_service.cluster_batch` via
+  `retention.py::build_keyword_context()`, letting the model use it as context
+  rather than risking a hand-rolled parser on inconsistently-punctuated
+  human-curated input.
+- **Clustering board's "未留用新聞" column**: lets an editor drag an AI/human
+  "not retained" item straight into a topic or the unclassified list; the move
+  handler flips `retained` back to 1 (and clears it when dragged the other way
+  onto the not-retained zone) so the retention state never silently disagrees
+  with topic membership.
+
 ## Known incomplete/simplified areas (per README, not hidden)
 
 - Message Batches API: settings/data model exist, but `ModelGateway` only implements the

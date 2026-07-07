@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}設定 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<div class="page-header"><h1>設定</h1></div>
+
+<div class="card">
+  <h2>Anthropic API</h2>
+  <p>
+    {% if api_key_configured %}
+      狀態：<span class="badge badge-ok">已設定</span>（{{ api_key_masked }}）
+    {% else %}
+      狀態：<span class="badge badge-warn">尚未設定</span> — 請在部署平台（Render）的環境變數中設定 <code>ANTHROPIC_API_KEY</code>。
+    {% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <h2>Gmail 新聞來源</h2>
+  <p>
+    OAuth Client：
+    {% if oauth_client_configured %}
+      <span class="badge badge-ok">已設定</span>
+    {% else %}
+      <span class="badge badge-warn">尚未設定</span> — 請設定 <code>GMAIL_OAUTH_CLIENT_ID</code> / <code>GMAIL_OAUTH_CLIENT_SECRET</code> 環境變數。
+    {% endif %}
+  </p>
+  <p>
+    連接狀態：
+    {% if gmail_connected %}
+      <span class="badge badge-ok">已連接</span>
+    {% else %}
+      <span class="badge badge-warn">尚未連接</span>
+    {% endif %}
+    {% if oauth_client_configured %}
+      <a href="{{ url_for('settings.gmail_oauth_start') }}" class="btn">{{ '重新連接' if gmail_connected else '連接 Gmail' }}</a>
+    {% endif %}
+  </p>
+
+  <div class="result-box">
+    <p><strong>Authorized redirect URI</strong>（請把下面這行「逐字」複製貼到
+    Google Cloud Console 該 OAuth Client 的「已授權的重新導向 URI」欄位——
+    差一個字元、http/https、結尾斜線都會導致連接時出現
+    <code>redirect_uri_mismatch</code>（錯誤 400）：</p>
+    <p><code id="redirect-uri">{{ oauth_redirect_uri }}</code>
+      <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('redirect-uri').textContent)">複製</button>
+    </p>
+  </div>
+
+  <form method="post">
+    <label>寄件者信箱篩選<br>
+      <input type="text" name="sender_email_filter" value="{{ gmail.sender_email_filter }}" placeholder="例：xkm_cs@xkd.com.tw">
+    </label>
+    <label>主旨關鍵字（選填）<br>
+      <input type="text" name="subject_keyword" value="{{ gmail.subject_keyword }}" placeholder="例：新聞監測報告">
+    </label>
+
+    <h3>議題／關鍵字彙整表</h3>
+    <p class="muted">貼上業務關注議題與關鍵字對照表（可直接沿用 KEYPO 的布林檢索語法），
+      AI 執行留用初判與議題分群時會參考這份清單，判斷更精準。不會做程式端的關鍵字比對，
+      是直接把整段文字交給 AI 理解語意，所以格式不需要完全工整。</p>
+    <label>
+      <textarea name="keyword_taxonomy" rows="12" style="width:100%; font-family:monospace;"
+                placeholder="議題　關鍵字&#10;內政部相關　內政部|內政部長|劉世芳|...">{{ keyword_taxonomy }}</textarea>
+    </label>
+
+    <button type="submit" class="primary-button">儲存設定</button>
+  </form>
+</div>
+{% endblock %}

@@ -22,14 +22,19 @@ class RuleDraftWorker(QThread):
     finished_error = Signal(str)
 
     def __init__(self, feedback_entries: List[FeedbackLogEntry], gateway: ModelGateway,
-                 rule_repo: RuleRepository, prompt_repo: PromptRepository, parent=None):
+                 rule_repo: RuleRepository, prompt_repo: PromptRepository, db_path=None, parent=None):
         super().__init__(parent)
         self.feedback_entries = feedback_entries
         self.gateway = gateway
         self.rule_repo = rule_repo
         self.prompt_repo = prompt_repo
+        self.db_path = db_path
 
     def run(self) -> None:
+        # 在本 QThread 執行緒內重新建立 repo（thread-local 連線），理由同
+        # clustering_worker.py 的說明——不沿用建構子收到的主執行緒 repo 物件。
+        self.rule_repo = RuleRepository(self.db_path)
+        self.prompt_repo = PromptRepository(self.db_path)
         try:
             cfg = get_active_prompt(self.prompt_repo, "rule_draft")
             schema = json.loads(cfg.tool_schema_json)

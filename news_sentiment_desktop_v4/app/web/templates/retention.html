@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}留用初判 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<div class="page-header"><h1>3. 留用初判</h1></div>
+
+<div class="card">
+  {% if job_id %}
+    <div class="progress-wrap">
+      <div class="progress-bar"><div id="job-progress" class="progress-bar-fill"></div></div>
+      <p id="job-progress-label">處理中...</p>
+    </div>
+    <script>pollJob("{{ job_id }}");</script>
+    <p class="muted">（若確定沒有工作正在執行卻一直卡在這裡，可能是上次部署／重啟時工作意外中斷，
+       下面仍可以直接再按一次執行。）</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('retention.run') }}">
+    <button type="submit" class="primary-button">執行 AI 留用初判</button>
+  </form>
+</div>
+
+<div class="card">
+<table class="data-table retention-table">
+  <thead>
+    <tr>
+      <th>留用</th><th>標題</th><th>來源</th><th>時間</th><th>星等</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for it in items %}
+    <tr class="{{ 'row-not-retained' if not it.retained }}">
+      <td>
+        <form method="post" action="{{ url_for('retention.override') }}" class="inline-form">
+          <input type="hidden" name="row_id" value="{{ it.row_id }}">
+          <input type="checkbox" name="retained" onchange="toggleRetained(this)" {{ 'checked' if it.retained }}>
+        </form>
+      </td>
+      <td>{% if it.url %}<a href="{{ it.url }}" target="_blank">{{ it.title }}</a>{% else %}{{ it.title }}{% endif %}</td>
+      <td>{{ it.source }}</td>
+      <td>{{ it.published_at }}</td>
+      <td>{{ '★' * it.priority_stars if it.priority_stars else '-' }}</td>
+    </tr>
+    <tr class="body-row">
+      <td colspan="5">
+        <details>
+          <summary>正文{% if not it.body_text %}（尚無正文）{% endif %}</summary>
+          {% if it.body_text %}
+            <div class="body-full">{{ body_html_by_row_id.get(it.row_id, it.body_text) | safe }}</div>
+          {% endif %}
+        </details>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 勾選留用/取消留用改用背景 fetch 送出，不整頁重新導向——避免每點一次勾選就跳回
+// 頁面最上方，尤其新聞筆數多時捲動位置會被打斷，體驗很差。
+function toggleRetained(checkbox) {
+  const form = checkbox.form;
+  fetch(form.action, {
+    method: "POST",
+    body: new FormData(form),
+    headers: {"X-Requested-With": "fetch"},
+  }).then(() => {
+    checkbox.closest("tr").classList.toggle("row-not-retained", !checkbox.checked);
+  });
+}
+</script>
+{% endblock %}

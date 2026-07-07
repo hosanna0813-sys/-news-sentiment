@@ -23,6 +23,7 @@ API Key 安全儲存
 """
 from __future__ import annotations
 
+import os
 import sys
 import json
 from pathlib import Path
@@ -75,6 +76,12 @@ def save_api_key(api_key: str) -> None:
 
 
 def load_api_key() -> Optional[str]:
+    # 網頁版部署在雲端時，API Key 由平台環境變數注入（例如 Render 的
+    # Dashboard 環境變數），優先於 keyring/開發用 fallback；桌面版沒有設定
+    # 這個環境變數，行為不變。
+    env_key = os.environ.get("ANTHROPIC_API_KEY")
+    if env_key:
+        return env_key
     kr = _try_keyring()
     if kr is not None:
         try:

@@ -134,7 +134,7 @@ class ScrapingPage(QWidget):
                 self._active_browser = ps  # 記錄實例，供程式退出時最後防線清理
                 return ps
         self._worker = build_scraping_worker(
-            items, scraper, self.ctx.news_repo, self.ctx.job_repo, self.ctx.batch_repo,
+            items, scraper, self.ctx.job_repo, self.ctx.batch_repo,
             browser_scraper_factory=browser_factory,
             stats_repo=self.ctx.scrape_stats_repo,
         )

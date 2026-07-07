@@ -1,0 +1,405 @@
+:root {
+  color-scheme: light dark;
+  --primary: #7047e8;
+  --primary-hover: #5d38c9;
+  --primary-soft: #f1ecfd;
+  --surface: #ffffff;
+  --surface-muted: #f7f6fb;
+  --border: #e6e3ef;
+  --card-border: #e6e3ef;
+  --muted: #6b6b76;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  margin: 0;
+  line-height: 1.5;
+  background: var(--surface-muted);
+  color: #24222b;
+}
+
+/* 導覽列現在放在頁面最下方（見 base.html），用上邊框跟主內容分隔，
+   取代原本在頂部時的下邊框 */
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.85rem 1.5rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.topnav .brand { font-weight: 700; color: var(--primary); margin-right: 1.2rem; text-decoration: none; }
+.topnav a {
+  color: #48454f;
+  text-decoration: none;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+}
+.topnav a:hover { background: var(--primary-soft); color: var(--primary); }
+.topnav a.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.topnav .logout { margin-left: auto; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+
+.page-header { margin-bottom: 1.2rem; }
+.page-header h1 { margin: 0 0 0.3rem; }
+.page-header .subtitle { color: var(--muted); margin: 0; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.2rem;
+}
+.card h2 { margin-top: 0; }
+
+.stat-cards { display: flex; gap: 1rem; flex-wrap: wrap; }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  text-align: center;
+  min-width: 100px;
+}
+.stat-num { font-size: 2rem; font-weight: 700; color: var(--primary); }
+.stat-label { color: var(--muted); font-size: 0.85rem; }
+
+.flow-steps { padding-left: 1.2rem; }
+.flow-steps li { margin: 0.5rem 0; }
+.flow-steps a { color: var(--primary); text-decoration: none; }
+.flow-steps a:hover { text-decoration: underline; }
+
+table.data-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+table.data-table th, table.data-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+}
+table.data-table th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+tr.row-not-retained { opacity: 0.55; }
+.muted { color: var(--muted); }
+
+/* 留用初判表格欄寬：標題欄放寬，來源欄縮窄 */
+table.retention-table { table-layout: fixed; }
+table.retention-table th:nth-child(1), table.retention-table td:nth-child(1) { width: 6%; }
+table.retention-table th:nth-child(2), table.retention-table td:nth-child(2) {
+  width: 52%;
+  word-break: break-word;
+}
+table.retention-table th:nth-child(3), table.retention-table td:nth-child(3) { width: 12%; }
+table.retention-table th:nth-child(4), table.retention-table td:nth-child(4) { width: 18%; }
+table.retention-table th:nth-child(5), table.retention-table td:nth-child(5) { width: 12%; }
+
+tr.body-row td { padding-top: 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+tr.body-row summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+
+/* 正文全文顯示區塊——留用初判頁的收合區塊與議題分群頁的右側預覽面板共用 */
+.body-full {
+  white-space: pre-wrap;
+  margin-top: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.flash-list { margin-bottom: 1rem; }
+.flash { padding: 0.6rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; }
+.flash-success { background: #dff6dd; color: #14432a; }
+.flash-error { background: #fbdada; color: #611a15; }
+.flash-warn { background: #fff4ce; color: #614c00; }
+
+.badge { padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.85rem; }
+.badge-ok { background: var(--primary-soft); color: var(--primary); }
+.badge-warn { background: #fff4ce; color: #614c00; }
+
+.btn, button {
+  display: inline-block;
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  font: inherit;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* .btn／.primary-button：頁面主要行動走紫色主色；一般 <button> 預設維持樸素
+   邊框樣式（次要操作、選單內按鈕等），兩者刻意分開由樣板明確指定，而非用
+   選擇器猜測「表單裡的按鈕就是主要動作」──選單/彈出框裡的表單按鈕不該長得
+   跟頁面主要 CTA 一樣搶眼。 */
+.btn {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+
+.primary-button {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-button:hover { background: var(--primary-hover); }
+.secondary-button {
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondary-button:disabled { color: var(--muted); border-color: var(--card-border); cursor: not-allowed; }
+
+form label { display: block; margin: 0.6rem 0; font-size: 0.92rem; }
+input[type=text], input[type=password], input[type=datetime-local], textarea, select {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  font: inherit;
+  background: var(--surface);
+  color: inherit;
+}
+input[type=text]:focus, input[type=password]:focus, input[type=datetime-local]:focus,
+textarea:focus, select:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+input[type=checkbox] { accent-color: var(--primary); }
+
+.inline-form { display: inline-flex; gap: 0.4rem; align-items: center; margin: 0.2rem 0; }
+
+.progress-wrap { margin: 1rem 0; }
+.progress-bar { background: var(--surface-muted); border: 1px solid var(--card-border); border-radius: 999px; height: 14px; overflow: hidden; }
+.progress-bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s; }
+.progress-bar-fill.progress-failed { background: #c0392b; }
+#job-progress-label.progress-failed {
+  color: #c0392b;
+  font-weight: bold;
+  background: #fbdada;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.login-box {
+  max-width: 340px;
+  margin: 4rem auto;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 2rem;
+}
+.login-box h1 { color: var(--primary); }
+.login-box input { width: 100%; box-sizing: border-box; margin-bottom: 0.75rem; }
+.login-box button { width: 100%; }
+
+.result-box {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin: 1rem 0;
+}
+
+/* 議題分群頁：cluster-board 保留給既有測試斷言用（見 clustering.html
+   workspace-grid 容器上的 class="cluster-board workspace-grid"），視覺版面
+   實際由下面這組桌面工作台風格的 class 負責，配色沿用上面的全站 :root 變數。 */
+.cluster-header { margin-bottom: 1rem; }
+.cluster-header h1 { margin-bottom: 0.8rem; }
+
+.stats-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  background: var(--surface-muted);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin: 1rem 0;
+}
+.stat-cards-row { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-left: auto; }
+.stat-card-mini {
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  min-width: 84px;
+}
+.stat-card-mini .stat-num { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+.stat-card-mini .stat-label { color: var(--muted); font-size: 0.75rem; }
+
+/* 議題分群：左（待審新聞）／中（議題）／右（正文預覽）三欄工作區 */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, .9fr) minmax(400px, 1.1fr) minmax(320px, .9fr);
+  gap: 0;
+  align-items: start;
+  margin-top: 1rem;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.workspace-col { min-width: 0; padding: 1rem; }
+.workspace-col + .workspace-col { border-left: 1px solid var(--card-border); }
+.col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.col-header h3 { margin: 0; }
+
+.search-box {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+.tab-row { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; }
+.tab-btn {
+  background: var(--surface-muted);
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.tab-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
+
+.drop-zone {
+  border: 1px dashed var(--card-border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  min-height: 140px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.news-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.5rem;
+  cursor: grab;
+}
+.news-card:active { cursor: grabbing; }
+.news-card-body { flex: 1; min-width: 0; cursor: pointer; }
+.news-card-title { font-size: 0.92rem; }
+.news-card-meta { font-size: 0.78rem; margin-top: 0.15rem; }
+
+.drop-hint {
+  border: 1px dashed var(--card-border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+
+/* 卡片／議題右上角的「⋮」收合選單，收納次要操作，避免常駐一排按鈕 */
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.card-menu-wrap, .topic-menu-wrap { position: relative; flex-shrink: 0; }
+.card-menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  color: var(--muted);
+}
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 0.4rem;
+  min-width: 160px;
+}
+.dropdown-menu.open { display: flex; flex-direction: column; gap: 0.3rem; }
+.dropdown-menu button, .dropdown-menu select { text-align: left; white-space: nowrap; }
+.topic-dropdown-menu { min-width: 220px; }
+.menu-form { display: flex; gap: 0.3rem; align-items: center; }
+.menu-form input[type=text] { flex: 1; min-width: 0; }
+
+/* 議題選擇用下拉選單而非一排按鈕：議題一多，按鈕會換行撐高，導致這欄跟左邊
+   「未分類新聞」欄的格子沒有左右對齊，下拉選單固定高度不受議題數量影響 */
+.topic-selector-row { display: flex; gap: 0.5rem; margin-bottom: 0.7rem; }
+.topic-selector-row select { flex: 1; min-width: 0; padding: 0.45rem 0.6rem; }
+
+#preview-panel {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 0.9rem;
+  min-height: 220px;
+}
+#preview-panel .body-full { max-height: 50vh; }
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2a2a2a;
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 100;
+}
+
+@media (max-width: 900px) {
+  .workspace-grid { grid-template-columns: 1fr; }
+  .workspace-col + .workspace-col { border-left: none; border-top: 1px solid var(--card-border); }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #232323;
+    --surface-muted: #1a1a1a;
+    --border: #3a3a3a;
+    --card-border: #3a3a3a;
+    --muted: #aaa;
+    --primary-soft: #2c2440;
+  }
+  body { color: #eee; }
+  .flash-success { background: #16351f; color: #b6f0c2; }
+  .flash-error { background: #3a1a17; color: #f5b8b0; }
+  .flash-warn { background: #3a3011; color: #f5e2a0; }
+  .badge-warn { background: #3a3011; color: #f5e2a0; }
+  #job-progress-label.progress-failed { background: #3a1a17; color: #f5b8b0; }
+  .toast { background: #f4f4f4; color: #1a1a1a; }
+}

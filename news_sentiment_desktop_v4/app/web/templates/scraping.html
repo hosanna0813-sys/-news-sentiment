@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}抓正文 — 新聞輿情彙整{% endblock %}
+{% block content %}
+<div class="page-header"><h1>2. 抓取新聞正文</h1></div>
+
+<div class="card">
+  <p class="muted">待抓取（已留用但無正文）：{{ pending_count }} 則；已取得正文：{{ done_count }} 則</p>
+
+  {% if job_id %}
+    <div class="progress-wrap">
+      <div class="progress-bar"><div id="job-progress" class="progress-bar-fill"></div></div>
+      <p id="job-progress-label">處理中...</p>
+    </div>
+    <script>pollJob("{{ job_id }}");</script>
+  {% else %}
+    <form method="post" action="{{ url_for('scraping.run') }}">
+      <button type="submit" class="primary-button" {{ 'disabled' if pending_count == 0 }}>抓取所有待處理新聞正文</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

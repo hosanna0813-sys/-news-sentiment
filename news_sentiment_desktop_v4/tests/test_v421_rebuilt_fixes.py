@@ -196,7 +196,7 @@ def test_cleanup_fn_exception_does_not_crash_worker(job_repo, batch_repo):
     assert job_repo.get(worker.job_id).status == "completed"
 
 
-def test_scraping_worker_closes_browser_via_cleanup_fn(news_repo, job_repo, batch_repo):
+def test_scraping_worker_closes_browser_via_cleanup_fn(news_repo, job_repo, batch_repo, tmp_db_path):
     """瀏覽器關閉改走 cleanup_fn：worker.run() 結束後瀏覽器已被關閉"""
     from app.models.news import NewsItem
     from app.services.scraping.body_scraper import FetchOutcome
@@ -221,8 +221,8 @@ def test_scraping_worker_closes_browser_via_cleanup_fn(news_repo, job_repo, batc
             FakeBrowserScraper.closed = True
 
     worker = build_scraping_worker(
-        [it], FakeBodyScraper(), news_repo, job_repo, batch_repo,
-        browser_scraper_factory=lambda: FakeBrowserScraper())
+        [it], FakeBodyScraper(), job_repo, batch_repo,
+        browser_scraper_factory=lambda: FakeBrowserScraper(), db_path=tmp_db_path)
     assert worker.cleanup_fn is not None  # 收尾走 cleanup_fn，而非 finished_job signal
     worker.run()
     assert FakeBrowserScraper.closed is True

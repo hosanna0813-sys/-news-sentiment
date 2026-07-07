@@ -13,7 +13,7 @@ from PySide6.QtCore import QUrl
 from app.controllers.app_context import AppContext
 from app.ui.widgets.news_table_model import NewsTableModel, COLUMNS
 from app.workers.retention_worker import build_retention_worker
-from app.services.feedback.feedback_service import log_feedback
+from app.services.retention.retention_service import apply_human_retention_override
 
 FILTER_OPTIONS = ["全部", "已留用", "AI建議不留用", "人工不留用", "待確認", "需回應", "正文已取得", "正文未取得"]
 SORT_OPTIONS = ["時間", "來源", "優先級", "重複群組"]
@@ -269,16 +269,12 @@ class RetentionPage(QWidget):
             return
         old_status = item.retention_status
         new_val = state == 2  # Qt.Checked
+        new_status = apply_human_retention_override(
+            self.ctx.news_repo, self.ctx.feedback_repo, item.row_id, new_val,
+            old_status=old_status, action="human_override")
         item.retained = new_val
-        item.retention_status = "留用" if new_val else "人工不留用"
+        item.retention_status = new_status
         item.retention_judged_by = "human"
-        self.ctx.news_repo.update_fields(item.row_id, {
-            "retained": 1 if new_val else 0, "retention_status": item.retention_status,
-            "retention_judged_by": "human",
-        })
-        log_feedback(self.ctx.feedback_repo, batch_id="", entity_type="retention", entity_id=item.row_id,
-                     ai_original_value=old_status, human_final_value=item.retention_status,
-                     action="human_override", operator="user")
         self.model.refresh_row(item.row_id)
 
     def _on_manual_note_changed(self):
@@ -291,14 +287,9 @@ class RetentionPage(QWidget):
 
     def _on_retention_toggled(self, row_id: str, new_value: bool):
         """來自表格勾選欄位的變更（規格：改勾選不得讓清單跳回第一列/不得重新載入整張表格）"""
-        status = "留用" if new_value else "人工不留用"
-        self.ctx.news_repo.update_fields(row_id, {
-            "retained": 1 if new_value else 0, "retention_status": status,
-            "retention_judged_by": "human",
-        })
-        log_feedback(self.ctx.feedback_repo, batch_id="", entity_type="retention", entity_id=row_id,
-                     ai_original_value="", human_final_value=status, action="human_override_table",
-                     operator="user")
+        apply_human_retention_override(
+            self.ctx.news_repo, self.ctx.feedback_repo, row_id, new_value,
+            old_status="", action="human_override_table")
 
     # ---------- AI 留用初判 ----------
     def _on_ai_judge(self):

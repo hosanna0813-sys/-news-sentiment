@@ -13,6 +13,7 @@ from typing import List, Optional
 from app.models.news import NewsItem
 from app.repositories.news_repository import NewsRepository
 from app.repositories.job_repository import JobRepository, BatchRepository
+from app.repositories.scrape_stats_repository import ScrapeStatsRepository
 from app.services.scraping.body_scraper import BodyScraper, FetchOutcome
 from app.workers.batch_job_worker import BatchJobWorker, BatchOutcome
 from app.utils.logging_setup import get_logger
@@ -33,14 +34,16 @@ def _should_try_browser(outcome: FetchOutcome) -> bool:
 
 
 def build_scraping_worker(items: List[NewsItem], scraper: BodyScraper,
-                           news_repo: NewsRepository, job_repo: JobRepository,
-                           batch_repo: BatchRepository, batch_size: int = 5,
+                           job_repo: JobRepository, batch_repo: BatchRepository,
+                           batch_size: int = 5,
                            resume_job_id: Optional[str] = None,
                            browser_scraper_factory=None,
-                           stats_repo=None) -> BatchJobWorker:
+                           stats_repo=None, db_path=None) -> BatchJobWorker:
     """
     browser_scraper_factory: 可選，回傳已 start() 的 PlaywrightScraper 的工廠函式。
     stats_repo: 可選，ScrapeStatsRepository——記錄各站點成功率/耗時/連續失敗（V4.2.0）。
+    db_path: 供背景執行緒重建 thread-local NewsRepository/ScrapeStatsRepository 用
+    （不接受呼叫端傳入的 repo 物件——sqlite3 連線不可跨執行緒共用同一物件）。
     """
     from urllib.parse import urlparse
     from app.utils.text_utils import title_body_overlap
@@ -63,6 +66,11 @@ def build_scraping_worker(items: List[NewsItem], scraper: BodyScraper,
         return browser_state["scraper"]
 
     def process(batch_items: List[NewsItem]) -> BatchOutcome:
+        # 在背景執行緒內重新建立 thread-local repo，不沿用呼叫端在主執行緒建立
+        # 的 news_repo/stats_repo（sqlite3 連線不可跨執行緒共用同一物件，比照
+        # retention_worker.py 的既有慣例）。
+        thread_news_repo = NewsRepository(db_path)
+        thread_stats_repo = ScrapeStatsRepository(db_path) if stats_repo is not None else None
         updates = []
         success_count = 0
         skipped_count = 0
@@ -106,9 +114,9 @@ def build_scraping_worker(items: List[NewsItem], scraper: BodyScraper,
 
             elapsed = time.time() - start_ts
             domain = urlparse(it.url).netloc
-            if stats_repo is not None and domain:
+            if thread_stats_repo is not None and domain:
                 try:
-                    stats_repo.record(domain, outcome.status, elapsed, outcome.detail)
+                    thread_stats_repo.record(domain, outcome.status, elapsed, outcome.detail)
                 except Exception as e:
                     logger.debug(f"站點統計寫入失敗: {e}")
 
@@ -138,7 +146,7 @@ def build_scraping_worker(items: List[NewsItem], scraper: BodyScraper,
                     "row_id": it.row_id, "body_fetch_status": outcome.status,
                     "body_fetch_detail": outcome.detail, "body_fetched_at": time.time(),
                 })
-        news_repo.update_fields_bulk(updates)
+        thread_news_repo.update_fields_bulk(updates)
         return BatchOutcome(success=True, success_count=success_count, skipped_count=skipped_count)
 
     # 工作結束（完成/取消/例外）時關閉瀏覽器。
