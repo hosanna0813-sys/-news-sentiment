@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt
 from app.controllers.app_context import AppContext
 from app.utils.secure_key_store import (
     save_api_key, load_api_key, clear_api_key, mask_api_key,
+    save_openai_api_key, load_openai_api_key, clear_openai_api_key,
     load_gmail_credentials, clear_gmail_credentials,
 )
 from app.models.prompt_config import PromptConfig, PROMPT_TASKS
@@ -35,7 +36,7 @@ class SettingsPage(QWidget):
         root.addWidget(title)
 
         tabs = QTabWidget()
-        tabs.addTab(self._scrollable(self._build_api_tab()), "Anthropic API")
+        tabs.addTab(self._scrollable(self._build_api_tab()), "AI 供應商 / API")
         tabs.addTab(self._scrollable(self._build_model_tab()), "任務模型設定")
         tabs.addTab(self._build_prompt_tab(), "Prompt 編輯器")  # 編輯器需要撐滿高度，不包捲動區
         tabs.addTab(self._scrollable(self._build_scraping_tab()), "正文抓取設定")
@@ -56,6 +57,42 @@ class SettingsPage(QWidget):
         w = QWidget()
         layout = QVBoxLayout(w)
 
+        # ---- AI 供應商切換（V4.3.0）----
+        provider_group = QGroupBox("AI 供應商（所有分析功能共用）")
+        provider_form = QFormLayout(provider_group)
+        self.provider_combo = QComboBox()
+        self.provider_combo.addItem("OpenAI（ChatGPT）", "openai")
+        self.provider_combo.addItem("Anthropic（Claude）", "anthropic")
+        idx = self.provider_combo.findData(self.ctx.settings.api.provider)
+        if idx >= 0:
+            self.provider_combo.setCurrentIndex(idx)
+        provider_form.addRow("使用供應商：", self.provider_combo)
+        self.openai_default_model_edit = QLineEdit(self.ctx.settings.api.openai_default_model)
+        provider_form.addRow("OpenAI 預設模型：", self.openai_default_model_edit)
+        provider_form.addRow(QLabel(
+            "說明：任務模型設定中仍是 claude-* 型號時，OpenAI 供應商會自動改用上方預設模型；\n"
+            "也可到「任務模型設定」逐一輸入 OpenAI 型號。切換後按下方「儲存 API 設定」生效。"))
+        layout.addWidget(provider_group)
+
+        # ---- OpenAI API Key ----
+        openai_group = QGroupBox("OpenAI API Key")
+        openai_form = QFormLayout(openai_group)
+        self.openai_key_display = QLabel(mask_api_key(load_openai_api_key()))
+        self.openai_key_input = QLineEdit()
+        self.openai_key_input.setEchoMode(QLineEdit.Password)
+        self.openai_key_input.setPlaceholderText("輸入新的 OpenAI API Key（sk-...）")
+        openai_form.addRow("目前狀態：", self.openai_key_display)
+        openai_form.addRow("新的 API Key：", self.openai_key_input)
+        openai_btn_row = QHBoxLayout()
+        btn_openai_save = QPushButton("儲存")
+        btn_openai_save.clicked.connect(self._on_save_openai_key)
+        btn_openai_clear = QPushButton("一鍵清除")
+        btn_openai_clear.clicked.connect(self._on_clear_openai_key)
+        openai_btn_row.addWidget(btn_openai_save)
+        openai_btn_row.addWidget(btn_openai_clear)
+        openai_form.addRow(openai_btn_row)
+        layout.addWidget(openai_group)
+
         key_group = QGroupBox("Anthropic API Key")
         form = QFormLayout(key_group)
         self.key_display = QLabel(mask_api_key(load_api_key()))
@@ -68,7 +105,7 @@ class SettingsPage(QWidget):
         btn_row = QHBoxLayout()
         btn_save = QPushButton("儲存")
         btn_save.clicked.connect(self._on_save_key)
-        btn_test = QPushButton("測試連線")
+        btn_test = QPushButton("測試連線（目前供應商）")
         btn_test.clicked.connect(self._on_test_key)
         btn_clear = QPushButton("一鍵清除")
         btn_clear.clicked.connect(self._on_clear_key)
@@ -150,7 +187,31 @@ class SettingsPage(QWidget):
             self.key_display.setText(mask_api_key(None))
             self.key_status_label.setText("API Key 已清除")
 
+    def _on_save_openai_key(self):
+        key = self.openai_key_input.text().strip()
+        if not key:
+            QMessageBox.information(self, "提示", "請輸入 OpenAI API Key")
+            return
+        try:
+            save_openai_api_key(key)
+            self.openai_key_display.setText(mask_api_key(key))
+            self.openai_key_input.clear()
+            self.key_status_label.setText("OpenAI API Key 已加密儲存")
+        except Exception as e:
+            QMessageBox.critical(self, "儲存失敗", str(e))
+
+    def _on_clear_openai_key(self):
+        confirm = QMessageBox.question(self, "確認清除", "確定要清除已儲存的 OpenAI API Key 嗎？")
+        if confirm == QMessageBox.Yes:
+            clear_openai_api_key()
+            self.openai_key_display.setText(mask_api_key(None))
+            self.key_status_label.setText("OpenAI API Key 已清除")
+
     def _on_save_api_settings(self):
+        old_provider = self.ctx.settings.api.provider
+        self.ctx.settings.api.provider = self.provider_combo.currentData()
+        self.ctx.settings.api.openai_default_model = (
+            self.openai_default_model_edit.text().strip() or "gpt-5.5")
         self.ctx.settings.api.request_timeout_sec = self.timeout_spin.value()
         self.ctx.settings.api.max_retries = self.retry_spin.value()
         self.ctx.settings.api.retry_backoff_base_sec = self.backoff_spin.value()
@@ -159,22 +220,31 @@ class SettingsPage(QWidget):
         self.ctx.settings.api.enable_message_batches_api = self.chk_message_batches.isChecked()
         self.ctx.settings.api.retention_priority_threshold = self.retention_threshold_spin.value()
         self.ctx.settings.api.retention_max_concurrency = self.retention_concurrency_spin.value()
-        self.ctx.save_settings()
-        QMessageBox.information(self, "已儲存", "API 設定已儲存")
+        self.ctx.save_settings()  # save_settings 內含 reload：閘道會依新供應商重建
+        new_provider = self.ctx.settings.api.provider
+        msg = "API 設定已儲存"
+        if new_provider != old_provider:
+            name = "OpenAI（ChatGPT）" if new_provider == "openai" else "Anthropic（Claude）"
+            msg += f"\n\nAI 供應商已切換為：{name}\n之後所有分析呼叫（留用/分群/綜整/立場等）都將使用該供應商。"
+        QMessageBox.information(self, "已儲存", msg)
 
     # ---------- 任務模型 ----------
     def _build_model_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout(w)
-        layout.addWidget(QLabel("各 AI 任務使用的模型（留用初判建議 Haiku，分群建議 Sonnet，綜整/立場/規則建議 Opus）"))
+        note = QLabel(
+            "各 AI 任務使用的模型。欄位可直接輸入任何模型 ID（例如 OpenAI 的 gpt-5.5）。\n"
+            "使用 OpenAI 供應商時，仍是 claude-* 的任務會自動改用「AI 供應商 / API」分頁的預設模型。")
+        note.setWordWrap(True)
+        layout.addWidget(note)
 
         self.task_model_combos = {}
         form = QFormLayout()
         for m in self.ctx.settings.task_models:
             combo = QComboBox()
+            combo.setEditable(True)  # 允許輸入清單以外的模型 ID（如 OpenAI 型號）
             combo.addItems(MODEL_CHOICES)
-            if m["model_id"] in MODEL_CHOICES:
-                combo.setCurrentText(m["model_id"])
+            combo.setCurrentText(m["model_id"])
             self.task_model_combos[m["task"]] = combo
             form.addRow(m["task"], combo)
         layout.addLayout(form)

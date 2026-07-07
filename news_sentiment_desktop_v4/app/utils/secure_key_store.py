@@ -35,6 +35,7 @@ logger = get_logger("secure_key_store")
 
 SERVICE_NAME = "NewsSentimentDesktopV4"
 ACCOUNT_NAME = "ANTHROPIC_API_KEY"
+ACCOUNT_NAME_OPENAI = "OPENAI_API_KEY"
 ACCOUNT_NAME_GMAIL = "GMAIL_OAUTH_CREDENTIALS"
 
 
@@ -112,6 +113,60 @@ def mask_api_key(api_key: Optional[str]) -> str:
     if len(api_key) <= 4:
         return "*" * len(api_key)
     return "*" * (len(api_key) - 4) + api_key[-4:]
+
+
+def _dev_fallback_path_openai() -> Path:
+    return get_app_data_dir() / ".dev_fallback_openai_credential.json"
+
+
+def save_openai_api_key(api_key: str) -> None:
+    """OpenAI API Key 儲存（V4.3.0 供應商切換），儲存策略與 Anthropic Key 相同"""
+    if not api_key:
+        raise SecureKeyStoreError("API Key 不可為空")
+    kr = _try_keyring()
+    if kr is not None:
+        try:
+            kr.set_password(SERVICE_NAME, ACCOUNT_NAME_OPENAI, api_key)
+            logger.info("OpenAI API Key 已透過 keyring (Windows Credential Manager / DPAPI) 儲存")
+            return
+        except Exception as e:
+            logger.warning(f"keyring 儲存失敗，改用開發用 fallback: {e}")
+    if sys.platform == "win32":
+        raise SecureKeyStoreError("無法透過 Windows Credential Manager 儲存 OpenAI API Key")
+    _dev_fallback_path_openai().write_text(json.dumps({"api_key": api_key}), encoding="utf-8")
+    logger.warning("已使用開發用明碼 fallback 儲存 OpenAI API Key（僅限本沙盒測試）")
+
+
+def load_openai_api_key() -> Optional[str]:
+    kr = _try_keyring()
+    if kr is not None:
+        try:
+            val = kr.get_password(SERVICE_NAME, ACCOUNT_NAME_OPENAI)
+            if val:
+                return val
+        except Exception as e:
+            logger.warning(f"keyring 讀取失敗: {e}")
+    if sys.platform != "win32":
+        p = _dev_fallback_path_openai()
+        if p.exists():
+            try:
+                return json.loads(p.read_text(encoding="utf-8")).get("api_key")
+            except Exception:
+                return None
+    return None
+
+
+def clear_openai_api_key() -> None:
+    kr = _try_keyring()
+    if kr is not None:
+        try:
+            kr.delete_password(SERVICE_NAME, ACCOUNT_NAME_OPENAI)
+        except Exception as e:
+            logger.warning(f"keyring 清除失敗（可能本來就不存在）: {e}")
+    p = _dev_fallback_path_openai()
+    if p.exists():
+        p.unlink()
+    logger.info("OpenAI API Key 已清除")
 
 
 def _dev_fallback_path_gmail() -> Path:

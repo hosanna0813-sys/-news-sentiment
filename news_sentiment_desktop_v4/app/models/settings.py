@@ -35,6 +35,11 @@ DEFAULT_TASK_MODELS = [
 
 @dataclass
 class ApiSettings:
+    # AI 供應商（V4.3.0）："anthropic"（Claude）或 "openai"（ChatGPT）。
+    # 切換後所有分析呼叫（留用/分群/綜整/立場/規則/調校）都改走該供應商。
+    provider: str = "anthropic"
+    # OpenAI 預設模型：任務模型設定仍是 claude-* 時，OpenAI 供應商自動改用此模型
+    openai_default_model: str = "gpt-5.5"
     default_model: str = "claude-sonnet-5"
     request_timeout_sec: int = 60
     max_retries: int = 5

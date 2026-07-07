@@ -17,7 +17,7 @@ from app.repositories.settings_repository import PromptRepository, AppSettingsRe
 from app.repositories.prompt_tuning_repository import PromptTuningRepository
 from app.repositories.scrape_stats_repository import ScrapeStatsRepository
 from app.services.ai.model_gateway import ModelGateway
-from app.utils.secure_key_store import load_api_key
+from app.utils.secure_key_store import load_api_key, load_openai_api_key
 from app.utils.logging_setup import setup_logging, get_logger
 from app.prompts.registry import seed_defaults
 
@@ -45,14 +45,29 @@ class AppContext:
 
         self.settings = self.settings_repo.load()
 
-        self.gateway = ModelGateway(
+        self.gateway = self._build_gateway()
+        self.logger.info(f"AppContext 初始化完成（AI 供應商：{self.settings.api.provider}）")
+
+    def _build_gateway(self):
+        """依 settings.api.provider 建立對應供應商的閘道（介面相同，服務層無感）"""
+        api = self.settings.api
+        if api.provider == "openai":
+            from app.services.ai.openai_gateway import OpenAIGateway
+            return OpenAIGateway(
+                api_key_provider=load_openai_api_key,
+                task_model_lookup=self._task_model_lookup,
+                default_model=api.openai_default_model,
+                request_timeout_sec=api.request_timeout_sec,
+                max_retries=api.max_retries,
+                retry_backoff_base_sec=api.retry_backoff_base_sec,
+            )
+        return ModelGateway(
             api_key_provider=load_api_key,
             task_model_lookup=self._task_model_lookup,
-            request_timeout_sec=self.settings.api.request_timeout_sec,
-            max_retries=self.settings.api.max_retries,
-            retry_backoff_base_sec=self.settings.api.retry_backoff_base_sec,
+            request_timeout_sec=api.request_timeout_sec,
+            max_retries=api.max_retries,
+            retry_backoff_base_sec=api.retry_backoff_base_sec,
         )
-        self.logger.info("AppContext 初始化完成")
 
     def _task_model_lookup(self, task: str) -> Dict[str, Any]:
         for m in self.settings.task_models:
@@ -64,9 +79,9 @@ class AppContext:
 
     def reload_settings(self) -> None:
         self.settings = self.settings_repo.load()
-        self.gateway.request_timeout_sec = self.settings.api.request_timeout_sec
-        self.gateway.max_retries = self.settings.api.max_retries
-        self.gateway.retry_backoff_base_sec = self.settings.api.retry_backoff_base_sec
+        # 供應商或 OpenAI 預設模型可能改變：直接重建閘道（成本極低）。
+        # 進行中的 worker 持有舊閘道參照會把該批跑完，新工作使用新閘道。
+        self.gateway = self._build_gateway()
 
     def save_settings(self) -> None:
         self.settings_repo.save(self.settings)
