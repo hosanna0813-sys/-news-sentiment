@@ -145,6 +145,10 @@ def save_openai_api_key(api_key: str) -> None:
 
 
 def load_openai_api_key() -> Optional[str]:
+    # 與 load_api_key 相同：網頁版雲端部署時由平台環境變數注入，優先於 keyring
+    env_key = os.environ.get("OPENAI_API_KEY")
+    if env_key:
+        return env_key
     kr = _try_keyring()
     if kr is not None:
         try:
