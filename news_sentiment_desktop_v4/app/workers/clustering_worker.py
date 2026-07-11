@@ -27,6 +27,7 @@ from app.repositories.feedback_repository import FeedbackRepository
 from app.services.ai.model_gateway import ModelGateway, GatewayError
 from app.services.clustering.clustering_service import (
     split_insufficient_body, bucket_candidates, cluster_batch, merge_candidate_topics,
+    build_combined_clustering_examples,
 )
 from app.prompts.registry import get_active_prompt
 from app.services.taxonomy import prepend_keyword_context
@@ -47,7 +48,7 @@ class ClusteringWorker(QThread):
     def __init__(self, gateway: ModelGateway, news_repo: NewsRepository, topic_repo: TopicRepository,
                  prompt_repo: PromptRepository, bucket_size: int = 15,
                  incremental: bool = False, feedback_repo=None, db_path=None,
-                 keyword_taxonomy: str = "", parent=None):
+                 keyword_taxonomy: str = "", granularity: str = "standard", parent=None):
         super().__init__(parent)
         self.gateway = gateway
         self.news_repo = news_repo
@@ -58,6 +59,7 @@ class ClusteringWorker(QThread):
         self.feedback_repo = feedback_repo
         self.db_path = db_path
         self.keyword_taxonomy = keyword_taxonomy
+        self.granularity = granularity
         self._cancel = False
 
     def request_cancel(self) -> None:
@@ -65,25 +67,14 @@ class ClusteringWorker(QThread):
 
     # ---------- few-shot 範例（閉環學習） ----------
     def _build_human_examples(self) -> str:
+        """已收斂至 clustering_service.build_combined_clustering_examples()（原本這裡
+        與網頁版 app/web/routes/clustering.py 各自重複實作一份，且都遺漏了改名
+        （topic_naming）與議題合併（human_merge_topic）兩類最直接的粒度／命名訊號），
+        保留原方法名稱供既有測試沿用。"""
         if self.feedback_repo is None:
             return ""
-        try:
-            entries = self.feedback_repo.list_all()
-        except Exception:
-            return ""
-        lines = []
-        for e in entries:
-            if e.entity_type != "clustering" or not (e.action or "").startswith("human_"):
-                continue
-            if not (e.human_final_value or "").strip():
-                continue
-            it = self.news_repo.get(e.entity_id)
-            title = it.title if it else e.entity_id
-            old = (e.ai_original_value or "").strip() or "（未分類）"
-            lines.append(f"- 新聞《{title[:40]}》：AI 原歸「{old[:30]}」→ 人工改為「{e.human_final_value[:30]}」")
-            if len(lines) >= MAX_FEWSHOT_EXAMPLES:
-                break
-        return "\n".join(lines)
+        return build_combined_clustering_examples(self.feedback_repo, self.news_repo,
+                                                    MAX_FEWSHOT_EXAMPLES)
 
     # ---------- 既有議題（增量分群） ----------
     def _build_existing_topics(self) -> List[Dict[str, Any]]:
@@ -162,6 +153,7 @@ class ClusteringWorker(QThread):
                         clustering_cfg.user_template,
                         clustering_schema["name"], clustering_schema["schema"],
                         existing_topics=existing_topics, human_examples=human_examples,
+                        granularity=self.granularity,
                     )
                 except GatewayError as e:
                     logger.warning(f"分桶 {idx} 分群失敗，暫緩處理: {e.message}")
@@ -174,8 +166,9 @@ class ClusteringWorker(QThread):
                             assigned_to_existing.append(
                                 (rid, t["topic_id"], t.get("reason", ""), t.get("confidence", 0.5)))
                     else:
+                        # 跨批次整合只看得到名稱＋範例標題，多給兩則讓合併判斷更有依據
                         t["sample_titles"] = [title_lookup.get(rid, "")
-                                                for rid in t.get("member_row_ids", [])[:3]]
+                                                for rid in t.get("member_row_ids", [])[:5]]
                         candidate_topics.append(t)
 
             # ---- 寫回：歸入既有議題的新聞 ----
@@ -199,6 +192,7 @@ class ClusteringWorker(QThread):
                     merged_groups = merge_candidate_topics(
                         self.gateway, candidate_topics, merge_cfg.system_prompt,
                         merge_cfg.user_template, merge_schema["name"], merge_schema["schema"],
+                        granularity=self.granularity,
                     )
                 except GatewayError as e:
                     logger.warning(f"跨批次整合失敗，改用未合併的候選議題: {e.message}")

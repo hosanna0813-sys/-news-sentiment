@@ -265,6 +265,49 @@ def test_clustering_manual_move_persists_and_logs_feedback(logged_in_client, web
     assert any(e.entity_id == "r1" and e.action == "human_move" for e in feedback_entries)
 
 
+def test_clustering_rename_logs_naming_feedback(logged_in_client, web_app):
+    """改名是「命名風格」最直接的學習訊號（V4.4.0 起注入分群 prompt），
+    網頁版原本完全沒記錄。"""
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.topic_repo.upsert_one(Topic(topic_id="t1", topic_name="公投議題"))
+
+    resp = logged_in_client.post(
+        "/clustering/rename",
+        data={"topic_id": "t1", "new_name": "藍白推動公投與政治動員爭議"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    entries = ctx.feedback_repo.list_all(entity_type="topic_naming")
+    assert any(e.action == "human_rename" and e.ai_original_value == "公投議題"
+               and e.human_final_value == "藍白推動公投與政治動員爭議" for e in entries)
+
+
+def test_clustering_merge_logs_granularity_feedback(logged_in_client, web_app):
+    """合併議題是「AI 分得太細」最直接的粒度訊號（V4.4.0 起注入分群 prompt），
+    網頁版原本完全沒記錄——比照桌面版：每則被搬新聞一筆 human_merge、
+    議題層級一筆 human_merge_topic。"""
+    ctx = web_app.config["APP_CONTEXT"]
+    ctx.topic_repo.upsert_one(Topic(topic_id="t_src", topic_name="巴威颱風動態"))
+    ctx.topic_repo.upsert_one(Topic(topic_id="t_dst", topic_name="中颱巴威來襲防颱整備"))
+    ctx.news_repo.upsert_one(NewsItem(row_id="r1", title="颱風新聞", source="來源A"))
+    ctx.news_repo.update_fields("r1", {"final_topic_id": "t_src", "final_topic_name": "巴威颱風動態"})
+
+    resp = logged_in_client.post(
+        "/clustering/merge",
+        data={"source_topic_id": "t_src", "target_topic_id": "t_dst"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert ctx.news_repo.get("r1").final_topic_id == "t_dst"
+
+    entries = ctx.feedback_repo.list_all(entity_type="clustering")
+    assert any(e.action == "human_merge" and e.entity_id == "r1"
+               and e.reason == "颱風新聞" for e in entries)
+    assert any(e.action == "human_merge_topic" and e.entity_id == "t_src"
+               and e.ai_original_value == "巴威颱風動態"
+               and e.human_final_value == "中颱巴威來襲防颱整備" for e in entries)
+
+
 def test_clustering_move_via_fetch_returns_204_without_redirect(logged_in_client, web_app):
     # 拖曳看板用背景 fetch 送出移動請求（見 clustering.html handleDrop()），
     # 前端會直接搬動 DOM 節點，不應該整頁重新導向重繪。

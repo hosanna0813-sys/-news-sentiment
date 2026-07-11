@@ -25,6 +25,7 @@ from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.job_repository import JobRepository, BatchRepository
 from app.services.clustering.clustering_service import (
     split_insufficient_body, bucket_candidates, cluster_batch, merge_candidate_topics,
+    build_combined_clustering_examples,
 )
 from app.services.feedback.feedback_service import log_feedback
 from app.prompts.registry import get_active_prompt
@@ -86,25 +87,10 @@ def index():
 
 
 def _build_human_examples(feedback_repo, news_repo) -> str:
-    entries = feedback_repo.list_all()
-    lines = []
-    for e in entries:
-        if e.entity_type != "clustering" or not (e.action or "").startswith("human_"):
-            continue
-        if not (e.human_final_value or "").strip():
-            continue
-        # 標題優先讀 reason 裡存的快照（見 move() 的 log_feedback 呼叫），
-        # 「清除資料」把 news 清空後這筆回饋依然能拿來組 few-shot 範例；
-        # 沒有快照的舊紀錄才退回即時查表（找不到就用 entity_id 頂替，維持原行為）。
-        title = e.reason
-        if not title:
-            it = news_repo.get(e.entity_id)
-            title = it.title if it else e.entity_id
-        old = (e.ai_original_value or "").strip() or "（未分類）"
-        lines.append(f"- 新聞《{title[:40]}》：AI 原歸「{old[:30]}」→ 人工改為「{e.human_final_value[:30]}」")
-        if len(lines) >= MAX_FEWSHOT_EXAMPLES:
-            break
-    return "\n".join(lines)
+    """已收斂至 clustering_service.build_combined_clustering_examples()（原本這裡
+    與桌面版 clustering_worker.py 各自重複實作，且都沒把改名（topic_naming）與
+    議題合併（human_merge_topic）的回饋注入 prompt），保留原函式名稱供既有測試沿用。"""
+    return build_combined_clustering_examples(feedback_repo, news_repo, MAX_FEWSHOT_EXAMPLES)
 
 
 def build_clustering_job_inputs(ctx, incremental: bool):
@@ -150,11 +136,14 @@ def build_clustering_job_inputs(ctx, incremental: bool):
     merge_schema = json.loads(merge_cfg.tool_schema_json)
     title_lookup = {it.row_id: it.title for it in clusterable}
 
+    granularity = ctx.settings.api.clustering_granularity
+
     def process(bucket):
         topics = cluster_batch(
             ctx.gateway, bucket, clustering_cfg.system_prompt, clustering_cfg.user_template,
             clustering_schema["name"], clustering_schema["schema"],
             existing_topics=existing_topics, human_examples=human_examples,
+            granularity=granularity,
         )
         candidate_topics = []
         existing_updates = []
@@ -167,7 +156,8 @@ def build_clustering_job_inputs(ctx, incremental: bool):
                         "clustering_reason": t.get("reason", ""), "clustering_confidence": t.get("confidence", 0.5),
                     })
             else:
-                t["sample_titles"] = [title_lookup.get(rid, "") for rid in t.get("member_row_ids", [])[:3]]
+                # 跨批次整合只看得到名稱＋範例標題，多給兩則讓合併判斷更有依據
+                t["sample_titles"] = [title_lookup.get(rid, "") for rid in t.get("member_row_ids", [])[:5]]
                 candidate_topics.append(t)
 
         thread_news_repo = NewsRepository()
@@ -179,7 +169,7 @@ def build_clustering_job_inputs(ctx, incremental: bool):
         if candidate_topics:
             merged_groups = merge_candidate_topics(
                 ctx.gateway, candidate_topics, merge_cfg.system_prompt, merge_cfg.user_template,
-                merge_schema["name"], merge_schema["schema"],
+                merge_schema["name"], merge_schema["schema"], granularity=granularity,
             )
             candidate_by_id = {t["topic_id"]: t for t in candidate_topics}
             merged_source_ids = set()
@@ -309,9 +299,17 @@ def rename():
     topic_id = request.form["topic_id"]
     new_name = request.form.get("new_name", "").strip()
     if new_name:
+        old_topic = ctx.topic_repo.get(topic_id)
+        old_name = old_topic.topic_name if old_topic else ""
         ctx.topic_repo.update_fields(topic_id, {"topic_name": new_name})
         for it in ctx.news_repo.list_by_topic(topic_id):
             ctx.news_repo.update_fields(it.row_id, {"final_topic_name": new_name})
+        # 記錄命名回饋（比照桌面版議題調整頁）——分群 prompt 會把這些改名範例
+        # 注入為「議題命名風格範例」，讓 AI 學習編輯的取名方式
+        if old_name and old_name != new_name:
+            log_feedback(FeedbackRepository(), batch_id="", entity_type="topic_naming",
+                         entity_id=topic_id, ai_original_value=old_name,
+                         human_final_value=new_name, action="human_rename", operator="web")
     return redirect(url_for("clustering.index"))
 
 
@@ -325,10 +323,22 @@ def merge():
     target_topic = ctx.topic_repo.get(target_id)
     if target_topic is None:
         return redirect(url_for("clustering.index"))
+    source_topic = ctx.topic_repo.get(source_id)
+    source_name = source_topic.topic_name if source_topic else ""
+    feedback_repo = FeedbackRepository()
     for it in ctx.news_repo.list_by_topic(source_id):
         ctx.news_repo.update_fields(it.row_id, {"final_topic_id": target_id,
                                                  "final_topic_name": target_topic.topic_name})
+        log_feedback(feedback_repo, batch_id="", entity_type="clustering", entity_id=it.row_id,
+                     ai_original_value=source_name, human_final_value=target_topic.topic_name,
+                     action="human_merge", operator="web", reason=it.title[:60])
     ctx.topic_repo.mark_merged(source_id, target_id)
+    # 議題層級的合併回饋（比照桌面版）——「AI 分得太細」最直接的粒度訊號，
+    # 分群 prompt 的 few-shot 範例會用到
+    if source_name:
+        log_feedback(feedback_repo, batch_id="", entity_type="clustering", entity_id=source_id,
+                     ai_original_value=source_name, human_final_value=target_topic.topic_name,
+                     action="human_merge_topic", operator="web")
     return redirect(url_for("clustering.index"))
 
 

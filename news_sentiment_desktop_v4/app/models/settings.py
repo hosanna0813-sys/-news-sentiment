@@ -46,6 +46,8 @@ class ApiSettings:
     retry_backoff_base_sec: float = 2.0
     batch_size_retention: int = 10
     batch_size_clustering: int = 15
+    # 分群粒度（V4.4.0）："fine"（同一具體事件才合併）/"standard"/"coarse"（積極合併）
+    clustering_granularity: str = "standard"
     enable_message_batches_api: bool = False
     retention_priority_threshold: int = 3  # 留用初判 v2：優先級（1-5星）達此門檻才留用
     retention_max_concurrency: int = 4  # 留用初判批次平行處理數上限

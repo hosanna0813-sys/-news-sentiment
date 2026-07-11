@@ -28,6 +28,10 @@ def index():
         ctx.settings.gmail.sender_email_filter = request.form.get("sender_email_filter", "").strip()
         ctx.settings.gmail.subject_keyword = request.form.get("subject_keyword", "").strip()
         ctx.settings.keyword_taxonomy = request.form.get("keyword_taxonomy", "").strip()
+        granularity = request.form.get("clustering_granularity",
+                                        ctx.settings.api.clustering_granularity)
+        if granularity in ("fine", "standard", "coarse"):
+            ctx.settings.api.clustering_granularity = granularity
         ctx.save_settings()
         flash("設定已儲存", "success")
         return redirect(url_for("settings.index"))
@@ -46,6 +50,7 @@ def index():
         "settings.html",
         gmail=ctx.settings.gmail,
         keyword_taxonomy=ctx.settings.keyword_taxonomy,
+        clustering_granularity=ctx.settings.api.clustering_granularity,
         provider=ctx.settings.api.provider,
         api_key_configured=api_key_configured,
         api_key_masked=mask_api_key(os.environ.get("ANTHROPIC_API_KEY")),
