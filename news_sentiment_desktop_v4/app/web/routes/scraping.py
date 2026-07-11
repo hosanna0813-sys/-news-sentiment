@@ -9,7 +9,7 @@ from __future__ import annotations
 from flask import Blueprint, redirect, render_template, request, url_for
 
 from app.web.server import get_context
-from app.web.job_runner import start_batch_job, BatchOutcome
+from app.web.job_runner import start_batch_job, find_running_job_id, BatchOutcome
 from app.repositories.news_repository import NewsRepository
 from app.repositories.job_repository import JobRepository, BatchRepository
 from app.services.scraping.body_scraper import BodyScraper
@@ -92,6 +92,10 @@ def build_scraping_job_inputs(ctx):
 @scraping_bp.route("/scraping/run", methods=["POST"])
 def run():
     ctx = get_context()
+    # 已有抓取（或一鍵完成）在跑：導回既有進度條，不重複開工作
+    existing = find_running_job_id("scraping") or find_running_job_id("pipeline")
+    if existing:
+        return redirect(url_for("scraping.index", job_id=existing))
     batches, process = build_scraping_job_inputs(ctx)
     if not batches:
         return redirect(url_for("scraping.index"))

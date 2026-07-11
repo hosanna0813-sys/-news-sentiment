@@ -48,16 +48,20 @@ class PromptRepository:
             self.conn.execute("UPDATE prompts SET enabled=1 WHERE task=? AND version=?", (task, version))
 
     def restore_default(self, task: str) -> Optional[PromptConfig]:
+        # 取「最新」的預設版本（DESC）：程式內建預設升級後（registry.seed_defaults
+        # 會寫入新的 is_default 版本），還原應回到最新預設，而不是最舊的 v1
         cur = self.conn.execute(
-            "SELECT * FROM prompts WHERE task=? AND is_default=1 ORDER BY version ASC LIMIT 1", (task,))
+            "SELECT * FROM prompts WHERE task=? AND is_default=1 ORDER BY version DESC LIMIT 1", (task,))
         row = cur.fetchone()
         if not row:
             return None
         default_cfg = PromptConfig.from_row(dict(row))
-        # 以「新版本」的形式重新啟用預設內容，維持版本歷史完整
+        # 以「新版本」的形式重新啟用預設內容，維持版本歷史完整。
+        # is_default=True：內容就是預設內容，保留這個標記讓 seed_defaults 的
+        # 「預設升級」機制之後仍會作用（否則還原過一次就永遠吃不到預設更新）
         new_cfg = PromptConfig(task=task, system_prompt=default_cfg.system_prompt,
                                 user_template=default_cfg.user_template,
-                                tool_schema_json=default_cfg.tool_schema_json, is_default=False)
+                                tool_schema_json=default_cfg.tool_schema_json, is_default=True)
         return self.save_new_version(new_cfg)
 
     def ensure_seeded(self, task: str, default_cfg: PromptConfig) -> None:
@@ -110,6 +114,11 @@ class AppSettingsRepository:
             settings.task_models = data.get("task_models", settings.task_models)
             settings.keyword_taxonomy = data.get("keyword_taxonomy", "")
             return settings
-        except Exception:
+        except Exception as e:
+            # 不可默默吞掉：設定 JSON 解析失敗會導致所有設定重置為預設，
+            # 下一次儲存就把重置變成永久。大聲記 log 供事後追查。
+            import logging
+            logging.getLogger("nsd.settings_repository").error(
+                f"載入 app_settings 失敗，已回退為預設設定（原始錯誤：{e}）")
             return AppSettings()
 

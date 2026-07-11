@@ -3,6 +3,7 @@ from __future__ import annotations
 from flask import Blueprint, flash, redirect, render_template, url_for
 
 from app.web.server import get_context
+from app.web.job_runner import has_any_running_job
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -34,6 +35,10 @@ def clear_data():
     案例庫／規則庫」，這裡直接沿用該行為，不重新發明一套。
     """
     ctx = get_context()
+    if has_any_running_job():
+        # 背景執行緒正在讀寫這些資料表，邊跑邊刪會讓它的後續寫入變成孤兒資料
+        flash("目前有工作正在執行中，請等它跑完（或失敗）後再清除資料", "error")
+        return redirect(url_for("dashboard.index"))
     news_count = ctx.news_repo.delete_all()  # 一併清 import_batches；不動 feedback_log
     ctx.topic_repo.delete_all()
     ctx.scrape_stats_repo.delete_all()

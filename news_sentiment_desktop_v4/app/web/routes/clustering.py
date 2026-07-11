@@ -16,8 +16,8 @@ import json
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from app.web.server import get_context
-from app.web.job_runner import start_batch_job, BatchOutcome
-from app.web.routes.retention import build_keyword_context
+from app.web.job_runner import start_batch_job, find_running_job_id, BatchOutcome
+from app.services.taxonomy import prepend_keyword_context
 from app.models.topic import Topic
 from app.repositories.news_repository import NewsRepository
 from app.repositories.topic_repository import TopicRepository
@@ -65,10 +65,11 @@ def index():
     if not job_id:
         # 沒帶 job_id 時也主動查一次有沒有跑到一半的分群工作（也涵蓋「一鍵完成」
         # 用的 pipeline 工作類型），避免重新整理後進度條消失被誤會成卡住。
-        running = (JobRepository().list_resumable("clustering")
-                   or JobRepository().list_resumable("pipeline"))
+        # 只取 status=="running"——list_resumable 也會回傳 failed/retryable 的
+        # 舊工作，掛上去會讓頁面輪詢一個永遠不會動的進度條。
+        running = (find_running_job_id("clustering") or find_running_job_id("pipeline"))
         if running:
-            job_id = running[0].job_id
+            job_id = running
 
     # 拖曳卡片點擊時，右側預覽面板純用前端 JS 從這份查表取資料顯示，
     # 不必為了「點一下看正文」多打一次後端請求。
@@ -138,10 +139,9 @@ def build_clustering_job_inputs(ctx, incremental: bool):
     if not clusterable:
         return [], None
 
-    keyword_context = build_keyword_context(ctx)
-    human_examples = _build_human_examples(FeedbackRepository(), NewsRepository())
-    if keyword_context:
-        human_examples = f"{keyword_context}\n\n{human_examples}" if human_examples else keyword_context
+    human_examples = prepend_keyword_context(
+        ctx.settings.keyword_taxonomy,
+        _build_human_examples(FeedbackRepository(), NewsRepository()))
 
     buckets = bucket_candidates(clusterable, ctx.settings.api.batch_size_clustering)
     clustering_cfg = get_active_prompt(ctx.prompt_repo, "topic_clustering")
@@ -222,6 +222,10 @@ def build_clustering_job_inputs(ctx, incremental: bool):
 @clustering_bp.route("/clustering/run", methods=["POST"])
 def run():
     ctx = get_context()
+    # 已有分群（或一鍵完成）在跑：直接導回既有進度條，不重複開工作
+    existing = find_running_job_id("clustering") or find_running_job_id("pipeline")
+    if existing:
+        return redirect(url_for("clustering.index", job_id=existing))
     incremental = request.form.get("incremental") == "on"
     buckets, process = build_clustering_job_inputs(ctx, incremental)
     if not buckets:

@@ -12,9 +12,13 @@ services:
     # 不必依賴 Render Dashboard 手動設定 Root Directory。
     rootDir: news_sentiment_desktop_v4
     buildCommand: pip install -r requirements-web.txt
-    startCommand: gunicorn -w 1 --timeout 120 "app.web.server:create_app()"
+    # --timeout 300：AI 批次的 route 本身雖是背景執行緒，但 Gmail 匯入等同步
+    # request 在量大時可能超過 120 秒，被 gunicorn 砍掉會變成無聲失敗。
+    startCommand: gunicorn -w 1 --timeout 300 "app.web.server:create_app()"
     envVars:
       - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
         sync: false
       - key: GMAIL_OAUTH_CLIENT_ID
         sync: false

@@ -91,8 +91,12 @@ def seed_defaults(repo: PromptRepository) -> None:
         # 使用者已自行修改過的 Prompt（active 非 is_default）完全不動。
         active = repo.get_active(task)
         if active is not None and active.is_default:
+            # 比較須包含 tool_schema_json：schema-only 的預設變更（例如分群 schema
+            # 補 topic_id 欄位）也要能升級到既有資料庫，否則永遠傳播不出去
+            default_schema_json = json.dumps(d["tool_schema"], ensure_ascii=False)
             if (active.system_prompt != d["system_prompt"]
-                    or active.user_template != d["user_template"]):
+                    or active.user_template != d["user_template"]
+                    or active.tool_schema_json != default_schema_json):
                 new_cfg = PromptConfig(
                     task=task, system_prompt=d["system_prompt"],
                     user_template=d["user_template"],

@@ -102,6 +102,23 @@ def _run_batches(job: JobRecord, job_type: str, batch_records: list,
     job_repo.update(job.job_id, {"status": final_status, "finished_at": time.time()})
 
 
+def find_running_job_id(job_type: str) -> Optional[str]:
+    """同型別的工作已在跑時回傳其 job_id，否則 None。run 路由用它擋重複啟動：
+    網頁版沒有「執行中就把按鈕變灰」的前端狀態，使用者重新整理後再按一次執行，
+    會對同一批新聞開兩個並行工作互相覆寫結果——直接把使用者導回既有工作的
+    進度條即可。"""
+    for j in JobRepository().list_resumable(job_type):
+        if j.status == "running":
+            return j.job_id
+    return None
+
+
+def has_any_running_job() -> bool:
+    """任何型別的工作是否還在跑（清除資料前的防護——刪掉正在被背景執行緒
+    讀寫的新聞／job 紀錄會讓那個執行緒的後續寫入變成孤兒資料或直接出錯）。"""
+    return any(j.status == "running" for j in JobRepository().list_all())
+
+
 def start_batch_job(job_type: str, item_batches: List[List[Any]],
                      process_batch_fn: Callable[[List[Any]], BatchOutcome],
                      job_repo: JobRepository, batch_repo: BatchRepository,

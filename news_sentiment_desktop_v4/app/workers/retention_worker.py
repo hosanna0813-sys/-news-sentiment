@@ -25,6 +25,7 @@ from app.services.retention.retention_service import (
     _FALLBACK_JUDGEMENT as _DEFAULT_JUDGEMENT,
 )
 from app.services.feedback.feedback_service import log_feedback
+from app.services.taxonomy import prepend_keyword_context
 from app.prompts.registry import get_active_prompt
 from app.workers.batch_job_worker import BatchJobWorker, BatchOutcome
 import json
@@ -54,7 +55,8 @@ def build_retention_worker(items: List[NewsItem], batch_size: int, gateway: Mode
                             max_concurrency: int = 1,
                             resume_job_id: Optional[str] = None,
                             db_path=None,
-                            feedback_repo=None) -> BatchJobWorker:
+                            feedback_repo=None,
+                            keyword_taxonomy: str = "") -> BatchJobWorker:
     prefilter_cfg = get_active_prompt(prompt_repo, "retention_prefilter")
     prefilter_schema_obj = json.loads(prefilter_cfg.tool_schema_json)
     judge_cfg = get_active_prompt(prompt_repo, "retention_judgement")
@@ -63,6 +65,8 @@ def build_retention_worker(items: List[NewsItem], batch_size: int, gateway: Mode
     human_examples = ""
     if feedback_repo is not None:
         human_examples = _build_retention_human_examples(feedback_repo, NewsRepository(db_path))
+    # 設定頁「議題／關鍵字彙整表」接在 few-shot 範例前（網頁版已有，桌面版補齊）
+    human_examples = prepend_keyword_context(keyword_taxonomy, human_examples)
 
     batches = [items[i:i + batch_size] for i in range(0, len(items), batch_size)]
 

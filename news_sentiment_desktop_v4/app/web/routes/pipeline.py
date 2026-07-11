@@ -27,7 +27,7 @@ import time
 from flask import Blueprint, flash, redirect, request, url_for
 
 from app.web.server import get_context
-from app.web.job_runner import run_batch_job_sync
+from app.web.job_runner import run_batch_job_sync, has_any_running_job
 from app.web.routes.import_gmail import parse_taipei_datetime
 from app.web.routes.retention import build_retention_job_inputs
 from app.web.routes.clustering import build_clustering_job_inputs
@@ -75,6 +75,10 @@ def _set_stage(job_repo, job_id, stage_index, label, sub_job_id=None, **extra_fi
 @pipeline_bp.route("/pipeline/run", methods=["POST"])
 def run():
     ctx = get_context()
+    # 一鍵完成會依序動到所有資料表——任何工作還在跑都不該再疊一個流程上去
+    if has_any_running_job():
+        flash("目前已有工作正在執行中，請等它完成後再啟動一鍵完成", "error")
+        return redirect(url_for("dashboard.index"))
     try:
         start_dt = parse_taipei_datetime(request.form["start_dt"])
         end_dt = parse_taipei_datetime(request.form["end_dt"])

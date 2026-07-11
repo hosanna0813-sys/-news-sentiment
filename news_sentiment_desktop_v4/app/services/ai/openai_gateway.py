@@ -22,6 +22,7 @@ Prompt 調校）完全不需要知道底層是哪一家。
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Optional, Dict, Any, List, Callable
 
@@ -31,24 +32,72 @@ from app.services.ai.model_gateway import GatewayError, GatewayErrorType, ToolUs
 
 logger = get_logger("openai_gateway")
 
+# 參數自癒的執行期能力快取（與 ModelGateway 的 model_capabilities 同精神）。
+# 放模組層級而非 gateway 實例屬性：切換供應商／改設定會重建 gateway，
+# 已學到的「這個模型要用哪個 token 參數／不支援 temperature」不該跟著蒸發，
+# 否則每次重建都要再吃一次 400 才重新學會。
+_TOKEN_PARAM: Dict[str, str] = {}      # model_id -> "max_completion_tokens"/"max_tokens"
+_NO_TEMPERATURE: set = set()            # 不支援 temperature 的模型
+
+_HTTP_STATUS_CLASS = {
+    "401": GatewayErrorType.AUTH, "403": GatewayErrorType.AUTH,
+    "429": GatewayErrorType.RATE_LIMIT,
+    "408": GatewayErrorType.TIMEOUT,
+    "500": GatewayErrorType.OVERLOADED, "502": GatewayErrorType.OVERLOADED,
+    "503": GatewayErrorType.OVERLOADED, "529": GatewayErrorType.OVERLOADED,
+}
+
 
 def _classify_openai_exception(e: Exception) -> str:
-    """將 openai SDK 例外分類為與 ModelGateway 相同的錯誤型態（以類名＋訊息判斷，
-    不依賴 SDK 匯入成功，測試可用假模組）"""
+    """將 openai SDK 例外分類為與 ModelGateway 相同的錯誤型態。
+
+    判斷順序（可靠 → 不可靠）：
+    1. SDK 例外類名（AuthenticationError/RateLimitError/...）
+    2. status_code 屬性（openai 的 APIStatusError 系列都有）
+    3. 訊息關鍵字；HTTP 狀態碼只用字邊界比對（\\b429\\b），避免像
+       「max_tokens: 14000」這種內容裡恰好含數字造成誤分類
+    不依賴 SDK 匯入成功，測試可用假模組／一般 Exception。"""
     name = type(e).__name__.lower()
-    msg = str(e).lower()
-    if "authentication" in name or "401" in msg or "invalid api key" in msg or "incorrect api key" in msg:
+    if "authentication" in name or "permissiondenied" in name:
         return GatewayErrorType.AUTH
-    if "ratelimit" in name or "429" in msg or "rate limit" in msg:
+    if "ratelimit" in name:
         return GatewayErrorType.RATE_LIMIT
-    if "timeout" in name or "timed out" in msg or "timeout" in msg:
+    if "timeout" in name:
         return GatewayErrorType.TIMEOUT
-    if "badrequest" in name or "invalid_request" in msg or "400" in msg:
+    if "internalserver" in name:
+        return GatewayErrorType.OVERLOADED
+    if "badrequest" in name or "unprocessableentity" in name or "notfound" in name:
         return GatewayErrorType.INVALID_REQUEST
+
+    status = getattr(e, "status_code", None)
+    if isinstance(status, int):
+        mapped = _HTTP_STATUS_CLASS.get(str(status))
+        if mapped:
+            return mapped
+        if 400 <= status < 500:
+            return GatewayErrorType.INVALID_REQUEST
+        if status >= 500:
+            return GatewayErrorType.OVERLOADED
+
+    msg = str(e).lower()
+    if "invalid api key" in msg or "incorrect api key" in msg:
+        return GatewayErrorType.AUTH
+    if "rate limit" in msg or "rate_limit" in msg:
+        return GatewayErrorType.RATE_LIMIT
+    if "timed out" in msg or "timeout" in msg:
+        return GatewayErrorType.TIMEOUT
     if "content" in msg and ("polic" in msg or "filter" in msg):
         return GatewayErrorType.CONTENT_POLICY
-    if "internalserver" in name or "500" in msg or "502" in msg or "503" in msg or "overloaded" in msg:
+    if "overloaded" in msg:
         return GatewayErrorType.OVERLOADED
+    if "invalid_request" in msg or "invalid request" in msg:
+        return GatewayErrorType.INVALID_REQUEST
+    m = re.search(r"\b(4\d\d|5\d\d)\b", msg)
+    if m:
+        code = m.group(1)
+        return _HTTP_STATUS_CLASS.get(
+            code,
+            GatewayErrorType.INVALID_REQUEST if code.startswith("4") else GatewayErrorType.OVERLOADED)
     return GatewayErrorType.OTHER
 
 
@@ -64,9 +113,10 @@ class OpenAIGateway:
         self.request_timeout_sec = request_timeout_sec
         self.max_retries = max_retries
         self.retry_backoff_base_sec = retry_backoff_base_sec
-        # 執行期能力快取（與 ModelGateway 的參數自癒同精神）
-        self._token_param: Dict[str, str] = {}      # model_id -> "max_completion_tokens"/"max_tokens"
-        self._no_temperature: set = set()            # 不支援 temperature 的模型
+        # 執行期能力快取——實例屬性只是模組層級快取的別名（見檔頭說明），
+        # 重建 gateway（改設定／切供應商）不會弄丟已學到的參數相容性
+        self._token_param = _TOKEN_PARAM
+        self._no_temperature = _NO_TEMPERATURE
         self._mapped_models: set = set()             # 已記過 log 的 claude->openai 對應
 
     # ---------- client 管理 ----------
@@ -83,6 +133,12 @@ class OpenAIGateway:
 
     def get_model_for_task(self, task: str) -> Dict[str, Any]:
         return self._task_model_lookup(task)
+
+    def resolve_model_id(self, task: str) -> str:
+        """實際會送出請求的模型 ID（含 claude-* → OpenAI 預設模型的對應），
+        供落庫記錄（如 summarized_by_model）使用——直接拿任務設定的 model_id
+        會在供應商切換後記到錯的名字"""
+        return self._resolve_model(self._task_model_lookup(task))
 
     def _resolve_model(self, cfg: Dict[str, Any]) -> str:
         """任務設定的模型 ID 若是 claude-* 或空值，自動改用 OpenAI 預設模型"""
@@ -136,7 +192,7 @@ class OpenAIGateway:
                     raise
                 msg = str(e)
                 if token_param in msg and ("unsupported" in msg.lower() or "not supported" in msg.lower()
-                                            or "use" in msg.lower()):
+                                            or "unrecognized" in msg.lower() or "use" in msg.lower()):
                     other = ("max_tokens" if token_param == "max_completion_tokens"
                               else "max_completion_tokens")
                     logger.warning(f"模型 {model_id} 不支援參數 `{token_param}`，改用 `{other}` 重送")

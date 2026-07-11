@@ -91,8 +91,11 @@ def login():
 
         shared_password = os.environ.get("WEB_SHARED_PASSWORD", "")
         submitted = request.form.get("password", "")
-        # 用常數時間比較，避免密碼長度／內容差異透過回應時間被推測
-        if shared_password and hmac.compare_digest(submitted, shared_password):
+        # 用常數時間比較，避免密碼長度／內容差異透過回應時間被推測。
+        # 先編成 bytes：compare_digest 的 str 版本要求兩邊都是 ASCII，
+        # 密碼含中文或全形符號時會直接拋 TypeError（500），bytes 版本沒有此限制。
+        if shared_password and hmac.compare_digest(
+                submitted.encode("utf-8"), shared_password.encode("utf-8")):
             _record_success(client_key)
             session[_SESSION_KEY] = True
             next_path = _safe_next_path(request.args.get("next", ""))

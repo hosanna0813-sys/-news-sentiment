@@ -13,13 +13,15 @@ import json
 from flask import Blueprint, redirect, render_template, request, url_for
 
 from app.web.server import get_context
-from app.web.job_runner import start_batch_job, BatchOutcome
+from app.web.job_runner import start_batch_job, find_running_job_id, BatchOutcome
 from app.repositories.news_repository import NewsRepository
 from app.repositories.feedback_repository import FeedbackRepository
 from app.repositories.job_repository import JobRepository, BatchRepository
 from app.services.retention.retention_service import prefilter_batch, judge_batch, decide_retain, \
     apply_human_retention_override, build_human_examples, _FALLBACK_JUDGEMENT
 from app.services.feedback.feedback_service import log_feedback
+from app.services.taxonomy import build_keyword_context as _build_keyword_context, \
+    prepend_keyword_context
 from app.prompts.registry import get_active_prompt
 from app.utils.text_utils import extract_keywords_from_taxonomy, highlight_keywords, clean_body_for_preview
 
@@ -45,17 +47,9 @@ def _build_human_examples(feedback_repo, news_repo) -> str:
 
 
 def build_keyword_context(ctx) -> str:
-    """把使用者在設定頁貼的議題／關鍵字彙整表，轉成一段可直接注入 prompt 的
-    參考文字。刻意不在程式端解析布林語法（來源常有不平衡括號、不一致分隔符號
-    等人工謄寫雜訊，硬解析容易悄悄出錯）——原文交給 AI 理解語意即可。"""
-    taxonomy = (ctx.settings.keyword_taxonomy or "").strip()
-    if not taxonomy:
-        return ""
-    return (
-        "【業務關注議題與關鍵字對照表】以下是本單位各業務關注的議題分類與相關關鍵字"
-        "（可能包含 | 代表或、& 代表且的檢索語法），請作為判斷新聞是否相關、"
-        "以及應歸入哪個議題類別的重要參考：\n" + taxonomy
-    )
+    """已收斂至 app/services/taxonomy.py（桌面版留用初判／分群 worker 現在也要
+    注入同一段對照表，避免兩份文案分岔），保留原函式簽名供既有呼叫端與測試沿用。"""
+    return _build_keyword_context(ctx.settings.keyword_taxonomy)
 
 
 def build_retention_job_inputs(ctx):
@@ -70,10 +64,9 @@ def build_retention_job_inputs(ctx):
     judge_schema = json.loads(judge_cfg.tool_schema_json)
     priority_threshold = ctx.settings.api.retention_priority_threshold
 
-    keyword_context = build_keyword_context(ctx)
-    human_examples = _build_human_examples(FeedbackRepository(), NewsRepository())
-    if keyword_context:
-        human_examples = f"{keyword_context}\n\n{human_examples}" if human_examples else keyword_context
+    human_examples = prepend_keyword_context(
+        ctx.settings.keyword_taxonomy,
+        _build_human_examples(FeedbackRepository(), NewsRepository()))
 
     batches = [items[i:i + BATCH_SIZE] for i in range(0, len(items), BATCH_SIZE)]
 
@@ -117,6 +110,14 @@ def build_retention_job_inputs(ctx):
 
         thread_news_repo = NewsRepository()
         thread_feedback_repo = FeedbackRepository()
+        # 批次開跑到寫回之間，使用者可能已在頁面上人工覆寫留用狀態——
+        # 寫回前重讀一次目前值，AI 結果不可回頭蓋掉人工判斷
+        skipped_human = set()
+        for u in updates:
+            cur = thread_news_repo.get(u["row_id"])
+            if cur is not None and cur.retention_judged_by == "human":
+                skipped_human.add(u["row_id"])
+        updates = [u for u in updates if u["row_id"] not in skipped_human]
         thread_news_repo.update_fields_bulk(updates)
         for u in updates:
             log_feedback(thread_feedback_repo, batch_id="", entity_type="retention", entity_id=u["row_id"],
@@ -136,9 +137,9 @@ def index():
         # 沒有 job_id 查詢參數時（例如使用者重新整理、或直接輸入網址回到這頁），
         # 仍主動查一次有沒有尚未跑完的留用初判工作並顯示進度條——避免使用者以為
         # 「進度條消失=卡住」，其實只是網址上的 job_id 不見了。
-        running = JobRepository().list_resumable("retention")
-        if running:
-            job_id = running[0].job_id
+        # list_resumable 也會回傳 failed/retryable 的舊工作；這裡只關心「正在跑」
+        # 的進度條，掛上舊的失敗 job 會讓頁面一直輪詢一個不會動的進度。
+        job_id = find_running_job_id("retention")
 
     # 正文預覽維持完整原文、不截斷，只是把來源網頁常見的零星換行攤平成連續文字
     # （clean_body_for_preview，避免看起來被切成一截一截），並把設定頁「議題／
@@ -156,6 +157,11 @@ def index():
 @retention_bp.route("/retention/run", methods=["POST"])
 def run():
     ctx = get_context()
+    # 已有留用初判（或一鍵完成）在跑：直接導回既有進度條，不重複開工作——
+    # 兩個並行工作會對同一批新聞互相覆寫判斷結果
+    existing = find_running_job_id("retention") or find_running_job_id("pipeline")
+    if existing:
+        return redirect(url_for("retention.index", job_id=existing))
     batches, process = build_retention_job_inputs(ctx)
     if not batches:
         return redirect(url_for("retention.index"))

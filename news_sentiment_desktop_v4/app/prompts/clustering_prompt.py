@@ -39,6 +39,8 @@ CLUSTERING_TOOL_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
+                    "topic_id": {"type": "string",
+                                  "description": "沿用既有議題時填該議題的 topic_id；新議題留空字串"},
                     "topic_name": {"type": "string"},
                     "member_row_ids": {"type": "array", "items": {"type": "string"}},
                     "reason": {"type": "string"},

@@ -4,12 +4,23 @@
 <div class="page-header"><h1>設定</h1></div>
 
 <div class="card">
-  <h2>Anthropic API</h2>
+  <h2>AI 供應商</h2>
+  <p>目前使用：<span class="badge badge-ok">{{ 'OpenAI (ChatGPT)' if provider == 'openai' else 'Anthropic (Claude)' }}</span>
+    <span class="muted">（供應商切換請在桌面版設定頁操作，兩邊共用同一份設定）</span></p>
   <p>
+    Anthropic API Key：
     {% if api_key_configured %}
-      狀態：<span class="badge badge-ok">已設定</span>（{{ api_key_masked }}）
+      <span class="badge badge-ok">已設定</span>（{{ api_key_masked }}）
     {% else %}
-      狀態：<span class="badge badge-warn">尚未設定</span> — 請在部署平台（Render）的環境變數中設定 <code>ANTHROPIC_API_KEY</code>。
+      <span class="badge badge-warn">尚未設定</span> — 請在部署平台（Render）的環境變數中設定 <code>ANTHROPIC_API_KEY</code>。
+    {% endif %}
+  </p>
+  <p>
+    OpenAI API Key：
+    {% if openai_key_configured %}
+      <span class="badge badge-ok">已設定</span>（{{ openai_key_masked }}）
+    {% else %}
+      <span class="badge badge-warn">尚未設定</span> — 使用 OpenAI 供應商時，請設定 <code>OPENAI_API_KEY</code> 環境變數。
     {% endif %}
   </p>
 </div>

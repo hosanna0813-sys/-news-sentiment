@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
     def __init__(self, ctx: AppContext):
         super().__init__()
         self.ctx = ctx
-        self.setWindowTitle("新聞輿情系統 Desktop V4.2.0（Claude 版）")
+        self.setWindowTitle("新聞輿情系統 Desktop V4.3.0")
         self.resize(1600, 960)
         self._build_toolbar()
         self._build_status_bar()   # 必須先建立狀態列，因為 _build_central 內的

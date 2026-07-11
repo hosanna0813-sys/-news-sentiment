@@ -19,4 +19,7 @@ if __name__ == "__main__":
 
     app = create_app()
     threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
-    app.run(host="127.0.0.1", port=port, debug=os.environ.get("NSD_DEBUG") == "1")
+    # threaded=False：與正式部署的 gunicorn -w 1（單 worker、序列處理）行為一致。
+    # Flask 內建伺服器預設多執行緒，本機測試時多個分頁同時操作 SQLite 會踩到
+    # 正式環境不存在的並發情境，掩蓋或製造誤導性的問題。
+    app.run(host="127.0.0.1", port=port, debug=os.environ.get("NSD_DEBUG") == "1", threaded=False)

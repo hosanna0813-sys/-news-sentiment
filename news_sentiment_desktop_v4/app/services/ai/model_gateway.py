@@ -108,18 +108,24 @@ class ModelGateway:
     def __init__(self, api_key_provider: Callable[[], Optional[str]],
                  task_model_lookup: Callable[[str], Dict[str, Any]],
                  request_timeout_sec: int = 60, max_retries: int = 5,
-                 retry_backoff_base_sec: float = 2.0):
+                 retry_backoff_base_sec: float = 2.0,
+                 default_model: str = "claude-sonnet-5"):
         """
         api_key_provider: 呼叫時才取得 API Key 的函式（避免長期持有明碼於記憶體中過久）
         task_model_lookup: task -> {"model_id", "max_tokens", "temperature",
                                      "use_extended_thinking", "use_message_batches"}
+        default_model: 任務設定的模型 ID 不是 claude-* 時（例如切去 OpenAI 又切回來，
+                        逐任務設定殘留 gpt-*）的落回模型——與 OpenAIGateway._resolve_model
+                        的方向相反、精神相同，避免拿別家的模型 ID 打 Anthropic API
         """
         self._api_key_provider = api_key_provider
         self._task_model_lookup = task_model_lookup
+        self.default_model = default_model
         self.request_timeout_sec = request_timeout_sec
         self.max_retries = max_retries
         self.retry_backoff_base_sec = retry_backoff_base_sec
         self._client = None
+        self._mapped_models: set = set()   # 已記過 log 的非 claude 模型 ID
 
     # ---------- client 管理 ----------
     def _get_client(self):
@@ -137,6 +143,23 @@ class ModelGateway:
     def get_model_for_task(self, task: str) -> Dict[str, Any]:
         """公開方法：查詢某任務目前設定使用的模型與參數"""
         return self._task_model_lookup(task)
+
+    def _resolve_model(self, cfg: Dict[str, Any]) -> str:
+        """任務設定的模型 ID 若為空或不是 claude-*（如切換供應商殘留的 gpt-*），
+        自動改用 default_model 並記一次 log"""
+        model_id = cfg.get("model_id", "") or ""
+        if not model_id or not model_id.startswith("claude"):
+            if model_id and model_id not in self._mapped_models:
+                self._mapped_models.add(model_id)
+                logger.info(f"任務模型 {model_id} 非 Claude 型號，Anthropic 供應商下改用預設模型 "
+                             f"{self.default_model}（可在設定頁逐任務改回 Claude 型號）")
+            return self.default_model
+        return model_id
+
+    def resolve_model_id(self, task: str) -> str:
+        """實際會送出請求的模型 ID（含非 claude-* → 預設模型的落回），
+        供落庫記錄（如 summarized_by_model）使用"""
+        return self._resolve_model(self._task_model_lookup(task))
 
     def test_connection(self) -> Dict[str, Any]:
         """設定頁「測試」按鈕：以最小成本呼叫驗證 API Key 是否可用"""
@@ -241,7 +264,7 @@ class ModelGateway:
         由呼叫端（worker）標記該批為 failed/retryable，不影響其他已完成批次。
         """
         cfg = self._task_model_lookup(task)
-        model_id = cfg.get("model_id", "claude-sonnet-5")
+        model_id = self._resolve_model(cfg)
         params = sanitize_params(
             model_id=model_id,
             max_tokens=cfg.get("max_tokens", 4096),
@@ -292,8 +315,7 @@ class ModelGateway:
                 try:
                     data = self.call_json_mode(task=task, system_prompt=system_prompt,
                                                 user_content=user_content)
-                    cfg2 = self._task_model_lookup(task)
-                    return ToolUseResult(data=data, raw_text="", model_used=cfg2.get("model_id", ""),
+                    return ToolUseResult(data=data, raw_text="", model_used=model_id,
                                           stop_reason="json_mode_fallback", usage={})
                 except GatewayError:
                     pass  # 備援也失敗，拋出原始錯誤
@@ -306,7 +328,7 @@ class ModelGateway:
         並在應用層以嚴格 JSON 解析 + 重試處理例外（規格四第 2 點）。
         """
         cfg = self._task_model_lookup(task)
-        model_id = cfg.get("model_id", "claude-sonnet-5")
+        model_id = self._resolve_model(cfg)
         params = sanitize_params(model_id, cfg.get("max_tokens", 4096), cfg.get("temperature", 0.3),
                                   cfg.get("use_extended_thinking", False))
 
@@ -331,7 +353,7 @@ class ModelGateway:
                    max_tokens: int = 2048) -> str:
         """回傳純文字（同樣經過參數自癒與能力過濾）"""
         cfg = self._task_model_lookup(task)
-        model_id = cfg.get("model_id", "claude-sonnet-5")
+        model_id = self._resolve_model(cfg)
         params = sanitize_params(model_id, max_tokens, cfg.get("temperature", 0.3), False)
         resp = self._create_message(
             task, model_id, params, system=system_prompt,

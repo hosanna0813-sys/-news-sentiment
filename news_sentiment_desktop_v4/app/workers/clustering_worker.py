@@ -29,6 +29,7 @@ from app.services.clustering.clustering_service import (
     split_insufficient_body, bucket_candidates, cluster_batch, merge_candidate_topics,
 )
 from app.prompts.registry import get_active_prompt
+from app.services.taxonomy import prepend_keyword_context
 from app.utils.text_utils import new_id
 from app.utils.logging_setup import get_logger
 
@@ -45,7 +46,8 @@ class ClusteringWorker(QThread):
 
     def __init__(self, gateway: ModelGateway, news_repo: NewsRepository, topic_repo: TopicRepository,
                  prompt_repo: PromptRepository, bucket_size: int = 15,
-                 incremental: bool = False, feedback_repo=None, db_path=None, parent=None):
+                 incremental: bool = False, feedback_repo=None, db_path=None,
+                 keyword_taxonomy: str = "", parent=None):
         super().__init__(parent)
         self.gateway = gateway
         self.news_repo = news_repo
@@ -55,6 +57,7 @@ class ClusteringWorker(QThread):
         self.incremental = incremental
         self.feedback_repo = feedback_repo
         self.db_path = db_path
+        self.keyword_taxonomy = keyword_taxonomy
         self._cancel = False
 
     def request_cancel(self) -> None:
@@ -135,7 +138,10 @@ class ClusteringWorker(QThread):
                 self.finished_ok.emit(len(existing_topic_ids))
                 return
 
-            human_examples = self._build_human_examples()
+            # 設定頁「議題／關鍵字彙整表」接在 few-shot 範例前，供模型參考
+            # 業務議題分類命名（網頁版已有，桌面版補齊）
+            human_examples = prepend_keyword_context(
+                self.keyword_taxonomy, self._build_human_examples())
 
             buckets = bucket_candidates(clusterable, self.bucket_size)
             clustering_cfg = get_active_prompt(self.prompt_repo, "topic_clustering")

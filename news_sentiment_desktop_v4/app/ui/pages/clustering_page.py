@@ -55,6 +55,7 @@ class ClusteringPage(QWidget):
             bucket_size=self.ctx.settings.api.batch_size_clustering,
             incremental=self.chk_incremental.isChecked(),
             feedback_repo=self.ctx.feedback_repo,
+            keyword_taxonomy=self.ctx.settings.keyword_taxonomy,
         )
         self.btn_start.setEnabled(False)
         self.btn_cancel.setEnabled(True)

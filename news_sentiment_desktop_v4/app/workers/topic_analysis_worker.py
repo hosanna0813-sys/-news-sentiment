@@ -95,7 +95,7 @@ class TopicAnalysisWorker(QThread):
                     "possible_impact": summary_data.get("possible_impact", ""),
                     "cited_news_count": summary_data.get("cited_news_count", len(items)),
                     "summarized_at": time.time(),
-                    "summarized_by_model": self.gateway.get_model_for_task("topic_summarization").get("model_id", ""),
+                    "summarized_by_model": self.gateway.resolve_model_id("topic_summarization"),
                 })
             except GatewayError as e:
                 failed_count += 1

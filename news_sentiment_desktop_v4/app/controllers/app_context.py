@@ -67,6 +67,7 @@ class AppContext:
             request_timeout_sec=api.request_timeout_sec,
             max_retries=api.max_retries,
             retry_backoff_base_sec=api.retry_backoff_base_sec,
+            default_model=api.default_model,
         )
 
     def _task_model_lookup(self, task: str) -> Dict[str, Any]:

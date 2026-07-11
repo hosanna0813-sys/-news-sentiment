@@ -310,6 +310,7 @@ class RetentionPage(QWidget):
             max_concurrency=self.ctx.settings.api.retention_max_concurrency,
             resume_job_id=resume_job_id,
             feedback_repo=self.ctx.feedback_repo,
+            keyword_taxonomy=self.ctx.settings.keyword_taxonomy,
         )
         self._start_worker(len(pending_items))
 
@@ -339,6 +340,7 @@ class RetentionPage(QWidget):
             priority_threshold=self.ctx.settings.api.retention_priority_threshold,
             max_concurrency=self.ctx.settings.api.retention_max_concurrency,
             feedback_repo=self.ctx.feedback_repo,
+            keyword_taxonomy=self.ctx.settings.keyword_taxonomy,
         )
         self._start_worker(len(items))
 

@@ -33,6 +33,7 @@ def index():
         return redirect(url_for("settings.index"))
 
     api_key_configured = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    openai_key_configured = bool(os.environ.get("OPENAI_API_KEY"))
     oauth_client_configured = bool(os.environ.get("GMAIL_OAUTH_CLIENT_ID") and
                                     os.environ.get("GMAIL_OAUTH_CLIENT_SECRET"))
     gmail_connected = get_valid_credentials() is not None
@@ -45,8 +46,11 @@ def index():
         "settings.html",
         gmail=ctx.settings.gmail,
         keyword_taxonomy=ctx.settings.keyword_taxonomy,
+        provider=ctx.settings.api.provider,
         api_key_configured=api_key_configured,
         api_key_masked=mask_api_key(os.environ.get("ANTHROPIC_API_KEY")),
+        openai_key_configured=openai_key_configured,
+        openai_key_masked=mask_api_key(os.environ.get("OPENAI_API_KEY")),
         oauth_client_configured=oauth_client_configured,
         gmail_connected=gmail_connected,
         oauth_redirect_uri=oauth_redirect_uri,

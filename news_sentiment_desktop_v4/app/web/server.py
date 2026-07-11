@@ -35,11 +35,19 @@ def create_app() -> Flask:
             "正式部署請務必設定固定的 FLASK_SECRET_KEY，否則每次重啟都會讓所有人被登出。"
         )
     app.secret_key = secret_key
+    # session cookie 防護：SameSite=Lax 讓跨站發起的 POST 不帶登入 cookie
+    # （主要的 CSRF 防線，見下方 Origin 檢查的第二道）；雲端部署（RENDER 環境
+    # 變數由平台自動注入）全程 https，加上 Secure 旗標。
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    if os.environ.get("RENDER"):
+        app.config["SESSION_COOKIE_SECURE"] = True
     # Render（與大多數 PaaS）在 TLS 終止代理後面以 http 轉發給本服務；沒有
     # ProxyFix，Flask 會誤判 request.scheme 為 http，導致 url_for(_external=True)
     # 產生的 Gmail OAuth redirect_uri 跟 Google Cloud Console 登記的 https
-    # 網址對不起來。
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    # 網址對不起來。x_for=1 讓 request.remote_addr 取到真實來源 IP
+    # （登入節流依 IP 計數，沒有它整個代理後面只會看到同一個內部 IP）。
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     app.config["APP_CONTEXT"] = AppContext(debug=os.environ.get("NSD_DEBUG") == "1")
 
@@ -73,6 +81,23 @@ def create_app() -> Flask:
     app.register_blueprint(export_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(pipeline_bp)
+
+    @app.before_request
+    def _reject_cross_origin_post():
+        # CSRF 第二道防線（第一道是 SameSite=Lax cookie）：瀏覽器發起的跨站
+        # POST 一定帶 Origin 標頭，與本站 host 不符就拒絕。不帶 Origin 的請求
+        # （同站表單的舊瀏覽器、curl／腳本）放行——它們不在 CSRF 的威脅模型內。
+        from flask import request
+        if request.method != "POST":
+            return None
+        origin = request.headers.get("Origin")
+        if not origin:
+            return None
+        from urllib.parse import urlparse
+        if urlparse(origin).netloc != request.host:
+            logger.warning(f"拒絕跨站 POST：Origin={origin} host={request.host} path={request.path}")
+            return ("跨站請求已拒絕", 403)
+        return None
 
     register_auth_gate(app)
 
