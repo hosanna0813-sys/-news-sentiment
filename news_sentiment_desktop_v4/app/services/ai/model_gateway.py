@@ -290,6 +290,7 @@ class ModelGateway:
                 tools=tools,
                 tool_choice={"type": "tool", "name": tool_name},
             )
+            self._raise_and_grow_if_truncated(resp, params)
             tool_block = next((b for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
             text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
             if tool_block is None:
@@ -339,6 +340,7 @@ class ModelGateway:
                 task, model_id, params, system=strict_system,
                 messages=[{"role": "user", "content": user_content}],
             )
+            self._raise_and_grow_if_truncated(resp, params)
             text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
             text = getattr(text_block, "text", "") if text_block else ""
             parsed = safe_json_loads(text)
@@ -347,6 +349,21 @@ class ModelGateway:
             return strip_artifacts_deep(parsed)
 
         return self._call_with_retries(task, "json_mode ", _attempt)
+
+    @staticmethod
+    def _raise_and_grow_if_truncated(resp, params: dict) -> None:
+        """截斷自癒（與 OpenAIGateway 對稱）：stop_reason=max_tokens 表示輸出被
+        上限截斷——新一代會先「思考」的模型很容易吃掉大量輸出額度，截斷的
+        tool_use/JSON 若流出去，部分解析會讓漏判項目默默套保守後備值（例如
+        留用初判整批被誤標不留用）。把額度加大三倍後拋錯，交由重試迴圈重送。"""
+        if getattr(resp, "stop_reason", "") != "max_tokens":
+            return
+        old_budget = params.get("max_tokens", 0) or 1024
+        params["max_tokens"] = min(old_budget * 3, 32000)
+        raise GatewayError(
+            GatewayErrorType.PARSE_ERROR,
+            f"模型輸出達 max_tokens 上限被截斷（{old_budget} → 已自動調高為 "
+            f"{params['max_tokens']} 重試）")
 
     # ---------- 純文字輸出（map-reduce 中間摘要等內部用途） ----------
     def call_text(self, task: str, system_prompt: str, user_content: str,

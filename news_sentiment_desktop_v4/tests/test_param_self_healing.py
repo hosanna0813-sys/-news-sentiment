@@ -88,6 +88,39 @@ def test_gateway_strips_deprecated_param_and_learns(fake_anthropic_module):
     assert len(calls) == 1 and "temperature" not in calls[0]
 
 
+def test_truncated_output_grows_budget_and_retries(fake_anthropic_module):
+    """stop_reason=max_tokens（輸出被截斷）→ 自動加大額度重試（V4.5.2，
+    與 OpenAIGateway 對稱）。截斷的 tool_use 若流出去，漏判項目會默默套
+    保守後備值——留用初判整批被誤標不留用的根因。"""
+    class ToolBlock:
+        type = "tool_use"
+        input = {"judgements": []}
+
+    class Usage:
+        input_tokens = 1
+        output_tokens = 1
+
+    def make_resp(stop_reason):
+        class Resp:
+            content = [ToolBlock()]
+            usage = Usage()
+        Resp.stop_reason = stop_reason
+        return Resp()
+
+    calls = []
+
+    def create(**kwargs):
+        calls.append(dict(kwargs))
+        return make_resp("max_tokens" if len(calls) == 1 else "tool_use")
+
+    gw = _build_gateway(fake_anthropic_module, create)
+    result = gw.call_with_tool(task="retention_judgement", system_prompt="s", user_content="u",
+                                tool_name="t", tool_schema={"type": "object"})
+    assert result.stop_reason == "tool_use"
+    assert len(calls) == 2
+    assert calls[1]["max_tokens"] == calls[0]["max_tokens"] * 3   # 截斷後加大三倍重送
+
+
 def test_non_param_invalid_request_not_retried(fake_anthropic_module):
     calls = []
 
