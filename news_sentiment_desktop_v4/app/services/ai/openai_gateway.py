@@ -239,6 +239,17 @@ class OpenAIGateway:
                 resp = self._create(client, model_id, messages, max_tokens, temperature,
                                      tools=tools, tool_choice=tool_choice)
                 choice = resp.choices[0]
+                # 截斷自癒：推理型模型（gpt-5.x）會先消耗大量輸出 token 思考，
+                # 設定的 max_tokens 很容易不夠，輸出 JSON 被砍半——部分解析器
+                # 仍可能救回「前幾筆」，剩下的項目就默默套用保守後備值（例如
+                # 留用初判整批被誤標不留用）。偵測 finish_reason=length 時
+                # 把額度加大三倍重試，不讓截斷結果流出去。
+                if (getattr(choice, "finish_reason", "") or "") == "length":
+                    old_budget = max_tokens
+                    max_tokens = min(max_tokens * 3, 32000)
+                    raise GatewayError(
+                        GatewayErrorType.PARSE_ERROR,
+                        f"模型輸出達 max_tokens 上限被截斷（{old_budget} → 已自動調高為 {max_tokens} 重試）")
                 tool_calls = getattr(choice.message, "tool_calls", None)
                 if not tool_calls:
                     raise GatewayError(GatewayErrorType.PARSE_ERROR, "模型未回傳 function call")
@@ -291,13 +302,22 @@ class OpenAIGateway:
         strict_system = system_prompt + "\n\n重要：只回傳合法 JSON，不要包含任何說明文字或 markdown 標記。"
         messages = self._build_messages(strict_system, user_content)
 
+        max_tokens = cfg.get("max_tokens", 4096)
         last_error: Optional[GatewayError] = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 client = self._get_client()
                 resp = self._create(client, model_id, messages,
-                                     cfg.get("max_tokens", 4096), cfg.get("temperature", 0.3))
-                text = getattr(resp.choices[0].message, "content", "") or ""
+                                     max_tokens, cfg.get("temperature", 0.3))
+                choice = resp.choices[0]
+                # 截斷自癒（同 call_with_tool）：截斷的 JSON 不可流出去
+                if (getattr(choice, "finish_reason", "") or "") == "length":
+                    old_budget = max_tokens
+                    max_tokens = min(max_tokens * 3, 32000)
+                    raise GatewayError(
+                        GatewayErrorType.PARSE_ERROR,
+                        f"模型輸出達 max_tokens 上限被截斷（{old_budget} → 已自動調高為 {max_tokens} 重試）")
+                text = getattr(choice.message, "content", "") or ""
                 parsed = safe_json_loads(text)
                 if parsed is None:
                     raise GatewayError(GatewayErrorType.PARSE_ERROR,

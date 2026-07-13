@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 
 from app.models.news import NewsItem
 from app.utils.text_utils import coerce_model_list, safe_format
-from app.services.ai.model_gateway import ModelGateway
+from app.services.ai.model_gateway import ModelGateway, GatewayError, GatewayErrorType
 from app.services.feedback.feedback_service import log_feedback
 from app.utils.logging_setup import get_logger
 
@@ -156,11 +156,23 @@ def judge_batch(gateway: ModelGateway, items: List[NewsItem], system_prompt: str
             "should_respond": bool(j.get("should_respond", False)),
             "is_moi_core_business": bool(j.get("is_moi_core_business", False)),
         }
-    # 若模型漏判某些 row_id，保守標記為低優先級（待人工複核），不可假裝已判斷完成，
-    # 也不可預設為高優先級去打擾長官
-    for it in items:
-        if it.row_id not in out:
-            out[it.row_id] = dict(_FALLBACK_JUDGEMENT)
+    # 模型漏判的 row_id 保守標記為低優先級（→ 不留用，待人工複核）。但「漏判超過
+    # 半批」幾乎一定是輸出被截斷或格式崩壞，默默全標不留用會讓使用者以為 AI 判斷
+    # 完成（實際上整批都是後備值）——這種情況改拋錯，讓 worker 把該批標為失敗
+    # 可重試，問題看得見。
+    missing = [it.row_id for it in items if it.row_id not in out]
+    # 只在「夠大的批次」套用整批失敗規則：一兩則的小批次維持既有契約
+    # （個別格式錯誤 → 套後備值），避免單則解析失敗也整批重試打轉
+    if len(items) >= 4 and len(missing) > len(items) / 2:
+        raise GatewayError(
+            GatewayErrorType.PARSE_ERROR,
+            f"模型只回傳 {len(items) - len(missing)}/{len(items)} 則判斷"
+            "（輸出可能被截斷或格式錯誤），整批標記失敗待重試，不套用保守後備值")
+    if missing:
+        logger.warning(f"留用細評有 {len(missing)} 則未在模型輸出中（{missing[:5]}...），"
+                        "已套用保守後備判斷（低優先級、不留用），請人工複核這些新聞")
+        for rid in missing:
+            out[rid] = dict(_FALLBACK_JUDGEMENT)
     return out
 
 
@@ -204,4 +216,11 @@ def prefilter_batch(gateway: ModelGateway, items: List[NewsItem], system_prompt:
     for it in items:
         if it.row_id not in out:
             out[it.row_id] = True
+    irrelevant = sum(1 for v in out.values() if not v)
+    if irrelevant == len(items):
+        # 整批被粗篩全滅極不尋常（粗篩設計上寧可放行），大聲記下來供排查
+        logger.warning(f"粗篩將整批 {len(items)} 則全部判定不相關（全部直接標不留用），"
+                        "若非該批確實都是娛樂/財經雜訊，請檢查模型輸出")
+    elif irrelevant:
+        logger.info(f"粗篩：{len(items)} 則中 {irrelevant} 則判定不相關")
     return out

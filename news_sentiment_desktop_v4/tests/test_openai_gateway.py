@@ -141,6 +141,27 @@ def test_temperature_self_healing(fake_openai):
     assert "temperature" not in fake_openai["calls"][-1]
 
 
+def test_truncated_output_retries_with_bigger_budget(fake_openai):
+    """finish_reason=length（輸出達 max_tokens 上限被截斷）→ 自動加大額度重試。
+    截斷的 JSON 若流出去，部分解析會讓漏判項目默默套保守後備值
+    （留用初判整批被誤標不留用的根因之一）。"""
+    calls = fake_openai["calls"]
+
+    def handler(kw):
+        if len(calls) == 1:
+            resp = _tool_response({"ok": True})
+            resp.choices[0].finish_reason = "length"   # 第一次：被截斷
+            return resp
+        return _tool_response({"ok": True})
+    fake_openai["handler"] = handler
+    gw = _make_gateway()
+    result = gw.call_with_tool("t", "s", "u", "tool", {"type": "object"})
+    assert result.data == {"ok": True}
+    first_budget = calls[0].get("max_completion_tokens") or calls[0].get("max_tokens")
+    second_budget = calls[1].get("max_completion_tokens") or calls[1].get("max_tokens")
+    assert second_budget == first_budget * 3   # 加大三倍重試
+
+
 def test_retry_on_rate_limit_then_success(fake_openai):
     attempts = {"n": 0}
 
