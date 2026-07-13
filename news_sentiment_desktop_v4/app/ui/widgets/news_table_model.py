@@ -53,11 +53,11 @@ class NewsTableModel(QAbstractTableModel):
         return str(section + 1)
 
     def flags(self, index: QModelIndex):
-        base = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        field, _ = COLUMNS[index.column()]
-        if field == "retained":
-            return base | Qt.ItemIsUserCheckable
-        return base
+        # 「留用」欄刻意不設 ItemIsUserCheckable：Qt 原生行為只有點中勾選框
+        # 那十幾px 的小方塊才會切換，實際操作很難點（使用者回報）。改由
+        # retention_page 監聽整格點擊呼叫 toggle_retained()——勾選框仍照常
+        # 渲染（data() 有回 CheckStateRole 就會畫），但切換範圍是整個儲存格。
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
         if not index.isValid():
@@ -95,6 +95,22 @@ class NewsTableModel(QAbstractTableModel):
         return False
 
     # ---------- 自訂輔助方法 ----------
+    def toggle_retained(self, row: int) -> None:
+        """切換某列留用狀態（整格點擊／空白鍵用），走與 setData 相同的路徑"""
+        item = self.item_at(row)
+        if item is None:
+            return
+        self.setData(self.index(row, 0),
+                     Qt.Unchecked if item.retained else Qt.Checked, Qt.CheckStateRole)
+
+    def set_retained(self, row: int, value: bool) -> None:
+        """把某列留用狀態設為指定值；已是該值時不動作（避免重複寫庫與回饋紀錄）"""
+        item = self.item_at(row)
+        if item is None or bool(item.retained) == value:
+            return
+        self.setData(self.index(row, 0),
+                     Qt.Checked if value else Qt.Unchecked, Qt.CheckStateRole)
+
     def item_at(self, row: int) -> Optional[NewsItem]:
         if 0 <= row < len(self._items):
             return self._items[row]

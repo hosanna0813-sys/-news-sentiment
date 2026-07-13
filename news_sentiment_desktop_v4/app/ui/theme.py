@@ -85,9 +85,10 @@ QStatusBar {{
     background: {SIDEBAR_BG}; color: #7C93AB; font-size: 11px; padding: 0 14px 8px 14px;
 }}
 
-/* ---- 頁面標題／警示 ---- */
+/* ---- 頁面標題／警示／操作提示 ---- */
 #pageTitle {{ font-size: 18px; font-weight: bold; color: {PRIMARY}; padding: 2px 0 6px 0; }}
 #alertLabel {{ color: {DANGER}; font-weight: bold; }}
+#hintLabel {{ color: {TEXT_MUTED}; font-size: 12px; }}
 
 /* ---- 卡片（QGroupBox） ---- */
 QGroupBox {{
@@ -167,6 +168,12 @@ QHeaderView::section {{
     padding: 6px 8px;
 }}
 QTableCornerButton::section {{ background: #EDF2F8; border: none; }}
+/* 表格內勾選框加大（留用欄），比 Qt 預設的小方塊好點擊、好辨識 */
+QTableView::indicator {{
+    width: 18px; height: 18px; border: 1px solid {BORDER}; border-radius: 4px;
+    background: {SURFACE};
+}}
+QTableView::indicator:checked {{ background: {PRIMARY}; border-color: {PRIMARY}; }}
 
 /* ---- 清單 ---- */
 QListWidget {{

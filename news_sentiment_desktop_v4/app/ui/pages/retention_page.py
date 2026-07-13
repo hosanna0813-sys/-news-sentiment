@@ -47,12 +47,24 @@ class RetentionPage(QWidget):
         mark_danger(self.btn_cancel_job)
         self.btn_cancel_job.setEnabled(False)
         self.btn_cancel_job.clicked.connect(self._on_cancel_job)
+        # 批次留用/不留用：配合多選（Shift/Ctrl 點選）一次處理多列
+        self.btn_bulk_retain = QPushButton("✔ 留用選取列")
+        self.btn_bulk_retain.clicked.connect(lambda: self._set_retained_for_selection(True))
+        self.btn_bulk_unretain = QPushButton("✘ 不留用選取列")
+        self.btn_bulk_unretain.clicked.connect(lambda: self._set_retained_for_selection(False))
         toolbar.addWidget(self.btn_refresh)
+        toolbar.addWidget(self.btn_bulk_retain)
+        toolbar.addWidget(self.btn_bulk_unretain)
         toolbar.addWidget(self.btn_ai_judge)
         toolbar.addWidget(self.btn_retry_failed)
         toolbar.addWidget(self.btn_cancel_job)
         toolbar.addStretch()
         root.addLayout(toolbar)
+
+        hint = QLabel("提示：點「留用」欄的整個格子即可切換，不必點中小方塊；"
+                       "按住 Shift／Ctrl 可多選列，再按上方按鈕或空白鍵批次切換。")
+        hint.setObjectName("hintLabel")
+        root.addWidget(hint)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
@@ -92,6 +104,15 @@ class RetentionPage(QWidget):
                 col, QHeaderView.Stretch if col == 1 else QHeaderView.ResizeToContents)
         self.table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_view.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        # 列高加大：勾選框與文字更好點、更好讀（原本用預設列高偏擠）
+        self.table_view.verticalHeader().setDefaultSectionSize(34)
+        # 點「留用」欄整格即切換——取代 Qt 原生「必須點中勾選框小方塊」的行為
+        self.table_view.clicked.connect(self._on_table_clicked)
+        # 空白鍵：批次切換所有選取列（以焦點列切換後的新值為準）
+        from PySide6.QtGui import QShortcut, QKeySequence
+        space = QShortcut(QKeySequence(Qt.Key_Space), self.table_view)
+        space.setContext(Qt.WidgetShortcut)
+        space.activated.connect(self._on_space_toggle)
         sel_model = self.table_view.selectionModel()
         if sel_model:
             sel_model.currentRowChanged.connect(self._on_row_selected)
@@ -294,6 +315,45 @@ class RetentionPage(QWidget):
         apply_human_retention_override(
             self.ctx.news_repo, self.ctx.feedback_repo, row_id, new_value,
             old_status="", action="human_override_table")
+        # 被切換的列剛好是右側預覽中的那一則時，同步預覽面板的勾選框
+        if row_id == self._current_row_id:
+            self.chk_retain.blockSignals(True)
+            self.chk_retain.setChecked(new_value)
+            self.chk_retain.blockSignals(False)
+
+    # ---------- 留用切換（整格點擊／批次／空白鍵） ----------
+    def _on_table_clicked(self, index):
+        if index.isValid() and index.column() == 0:
+            self.model.toggle_retained(index.row())
+
+    def _selected_rows(self) -> list:
+        sel_model = self.table_view.selectionModel()
+        if sel_model is None:
+            return []
+        return sorted({idx.row() for idx in sel_model.selectedRows()})
+
+    def _set_retained_for_selection(self, value: bool):
+        rows = self._selected_rows()
+        if not rows:
+            self.progress_label.setText("請先在清單中選取要處理的列（可按住 Shift／Ctrl 多選）")
+            return
+        for row in rows:
+            self.model.set_retained(row, value)
+        self.progress_label.setText(
+            f"已將 {len(rows)} 列設為「{'留用' if value else '不留用'}」")
+
+    def _on_space_toggle(self):
+        """空白鍵：以焦點列切換後的新值為準，套用到所有選取列"""
+        rows = self._selected_rows()
+        if not rows:
+            return
+        focus = self.table_view.currentIndex().row()
+        anchor = self.model.item_at(focus if focus in rows else rows[0])
+        if anchor is None:
+            return
+        target = not anchor.retained
+        for row in rows:
+            self.model.set_retained(row, target)
 
     # ---------- AI 留用初判 ----------
     def _on_ai_judge(self):
