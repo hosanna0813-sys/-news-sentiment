@@ -22,6 +22,9 @@ from app.models.settings import ModelTaskConfig
 from app.workers.gmail_import_worker import GmailAuthWorker
 
 MODEL_CHOICES = ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-4-8"]
+# OpenAI 常用型號（下拉快速選擇用；清單外的新型號仍可直接在欄位輸入）
+OPENAI_MODEL_CHOICES = ["gpt-5.5", "gpt-5.5-mini"]
+ALL_MODEL_CHOICES = MODEL_CHOICES + OPENAI_MODEL_CHOICES
 
 
 class SettingsPage(QWidget):
@@ -68,8 +71,11 @@ class SettingsPage(QWidget):
         if idx >= 0:
             self.provider_combo.setCurrentIndex(idx)
         provider_form.addRow("使用供應商：", self.provider_combo)
-        self.openai_default_model_edit = QLineEdit(self.ctx.settings.api.openai_default_model)
-        provider_form.addRow("OpenAI 預設模型：", self.openai_default_model_edit)
+        self.openai_default_model_combo = QComboBox()
+        self.openai_default_model_combo.setEditable(True)   # 新型號可直接輸入
+        self.openai_default_model_combo.addItems(OPENAI_MODEL_CHOICES)
+        self.openai_default_model_combo.setCurrentText(self.ctx.settings.api.openai_default_model)
+        provider_form.addRow("OpenAI 預設模型：", self.openai_default_model_combo)
         provider_form.addRow(QLabel(
             "說明：任務模型設定中仍是 claude-* 型號時，OpenAI 供應商會自動改用上方預設模型；\n"
             "也可到「任務模型設定」逐一輸入 OpenAI 型號。切換後按下方「儲存 API 設定」生效。"))
@@ -225,7 +231,7 @@ class SettingsPage(QWidget):
         old_provider = self.ctx.settings.api.provider
         self.ctx.settings.api.provider = self.provider_combo.currentData()
         self.ctx.settings.api.openai_default_model = (
-            self.openai_default_model_edit.text().strip() or "gpt-5.5")
+            self.openai_default_model_combo.currentText().strip() or "gpt-5.5")
         self.ctx.settings.api.request_timeout_sec = self.timeout_spin.value()
         self.ctx.settings.api.max_retries = self.retry_spin.value()
         self.ctx.settings.api.retry_backoff_base_sec = self.backoff_spin.value()
@@ -253,15 +259,28 @@ class SettingsPage(QWidget):
         note.setWordWrap(True)
         layout.addWidget(note)
 
+        task_labels = {
+            "retention_prefilter": "留用粗篩（步驟2，量大建議用較快模型）",
+            "retention_judgement": "留用細評（步驟2）",
+            "topic_clustering": "議題分群（步驟4）",
+            "topic_merge": "跨批次議題整合（步驟4）",
+            "topic_naming": "議題命名（步驟4）",
+            "topic_summarization": "議題綜整（步驟6，建議用最強模型）",
+            "stance_analysis": "立場分析（步驟6）",
+            "rule_draft": "規則草案產生",
+            "prompt_tuning_propose": "Prompt 調校建議",
+        }
         self.task_model_combos = {}
         form = QFormLayout()
         for m in self.ctx.settings.task_models:
             combo = QComboBox()
-            combo.setEditable(True)  # 允許輸入清單以外的模型 ID（如 OpenAI 型號）
-            combo.addItems(MODEL_CHOICES)
+            combo.setEditable(True)  # 允許輸入清單以外的新模型 ID
+            combo.addItems(MODEL_CHOICES)          # Claude 型號
+            combo.insertSeparator(combo.count())
+            combo.addItems(OPENAI_MODEL_CHOICES)   # OpenAI 型號
             combo.setCurrentText(m["model_id"])
             self.task_model_combos[m["task"]] = combo
-            form.addRow(m["task"], combo)
+            form.addRow(task_labels.get(m["task"], m["task"]), combo)
         layout.addLayout(form)
 
         btn_save = QPushButton("儲存任務模型設定")
