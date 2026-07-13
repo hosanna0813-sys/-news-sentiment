@@ -38,6 +38,9 @@ logger = get_logger("openai_gateway")
 # 否則每次重建都要再吃一次 400 才重新學會。
 _TOKEN_PARAM: Dict[str, str] = {}      # model_id -> "max_completion_tokens"/"max_tokens"
 _NO_TEMPERATURE: set = set()            # 不支援 temperature 的模型
+# 截斷自癒學到的「任務最低輸出額度」（task -> max_tokens），同 model_gateway：
+# 某任務被截斷加大過，同一次執行內後續批次直接以大額度起跳
+_LEARNED_MIN_TOKENS: Dict[str, int] = {}
 
 _HTTP_STATUS_CLASS = {
     "401": GatewayErrorType.AUTH, "403": GatewayErrorType.AUTH,
@@ -222,7 +225,7 @@ class OpenAIGateway:
                         extra_messages: Optional[List[Dict[str, Any]]] = None) -> ToolUseResult:
         cfg = self._task_model_lookup(task)
         model_id = self._resolve_model(cfg)
-        max_tokens = cfg.get("max_tokens", 4096)
+        max_tokens = max(cfg.get("max_tokens", 4096), _LEARNED_MIN_TOKENS.get(task, 0))
         temperature = cfg.get("temperature", 0.3)
         tools = [{"type": "function", "function": {
             "name": tool_name,
@@ -247,6 +250,7 @@ class OpenAIGateway:
                 if (getattr(choice, "finish_reason", "") or "") == "length":
                     old_budget = max_tokens
                     max_tokens = min(max_tokens * 3, 32000)
+                    _LEARNED_MIN_TOKENS[task] = max(_LEARNED_MIN_TOKENS.get(task, 0), max_tokens)
                     raise GatewayError(
                         GatewayErrorType.PARSE_ERROR,
                         f"模型輸出達 max_tokens 上限被截斷（{old_budget} → 已自動調高為 {max_tokens} 重試）")
@@ -302,7 +306,7 @@ class OpenAIGateway:
         strict_system = system_prompt + "\n\n重要：只回傳合法 JSON，不要包含任何說明文字或 markdown 標記。"
         messages = self._build_messages(strict_system, user_content)
 
-        max_tokens = cfg.get("max_tokens", 4096)
+        max_tokens = max(cfg.get("max_tokens", 4096), _LEARNED_MIN_TOKENS.get(task, 0))
         last_error: Optional[GatewayError] = None
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -314,6 +318,7 @@ class OpenAIGateway:
                 if (getattr(choice, "finish_reason", "") or "") == "length":
                     old_budget = max_tokens
                     max_tokens = min(max_tokens * 3, 32000)
+                    _LEARNED_MIN_TOKENS[task] = max(_LEARNED_MIN_TOKENS.get(task, 0), max_tokens)
                     raise GatewayError(
                         GatewayErrorType.PARSE_ERROR,
                         f"模型輸出達 max_tokens 上限被截斷（{old_budget} → 已自動調高為 {max_tokens} 重試）")

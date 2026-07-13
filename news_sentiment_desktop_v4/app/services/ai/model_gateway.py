@@ -34,6 +34,11 @@ from app.services.ai.model_capabilities import (
 
 logger = get_logger("model_gateway")
 
+# 截斷自癒學到的「任務最低輸出額度」（task -> max_tokens）。模組層級：
+# 同一次執行內，某任務曾被截斷加大過，後續批次直接以加大後的額度起跳，
+# 不必每一批都先浪費一次被截斷的呼叫（見 _raise_and_grow_if_truncated）。
+_LEARNED_MIN_TOKENS: Dict[str, int] = {}
+
 
 class GatewayErrorType:
     AUTH = "authentication_error"
@@ -267,7 +272,7 @@ class ModelGateway:
         model_id = self._resolve_model(cfg)
         params = sanitize_params(
             model_id=model_id,
-            max_tokens=cfg.get("max_tokens", 4096),
+            max_tokens=max(cfg.get("max_tokens", 4096), _LEARNED_MIN_TOKENS.get(task, 0)),
             temperature=cfg.get("temperature", 0.3),
             use_extended_thinking=cfg.get("use_extended_thinking", False),
         )
@@ -290,7 +295,7 @@ class ModelGateway:
                 tools=tools,
                 tool_choice={"type": "tool", "name": tool_name},
             )
-            self._raise_and_grow_if_truncated(resp, params)
+            self._raise_and_grow_if_truncated(resp, params, task)
             tool_block = next((b for b in resp.content if getattr(b, "type", None) == "tool_use"), None)
             text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
             if tool_block is None:
@@ -330,7 +335,9 @@ class ModelGateway:
         """
         cfg = self._task_model_lookup(task)
         model_id = self._resolve_model(cfg)
-        params = sanitize_params(model_id, cfg.get("max_tokens", 4096), cfg.get("temperature", 0.3),
+        params = sanitize_params(model_id,
+                                  max(cfg.get("max_tokens", 4096), _LEARNED_MIN_TOKENS.get(task, 0)),
+                                  cfg.get("temperature", 0.3),
                                   cfg.get("use_extended_thinking", False))
 
         strict_system = system_prompt + "\n\n重要：只回傳合法 JSON，不要包含任何說明文字或 markdown 標記。"
@@ -340,7 +347,7 @@ class ModelGateway:
                 task, model_id, params, system=strict_system,
                 messages=[{"role": "user", "content": user_content}],
             )
-            self._raise_and_grow_if_truncated(resp, params)
+            self._raise_and_grow_if_truncated(resp, params, task)
             text_block = next((b for b in resp.content if getattr(b, "type", None) == "text"), None)
             text = getattr(text_block, "text", "") if text_block else ""
             parsed = safe_json_loads(text)
@@ -351,15 +358,20 @@ class ModelGateway:
         return self._call_with_retries(task, "json_mode ", _attempt)
 
     @staticmethod
-    def _raise_and_grow_if_truncated(resp, params: dict) -> None:
+    def _raise_and_grow_if_truncated(resp, params: dict, task: str = "") -> None:
         """截斷自癒（與 OpenAIGateway 對稱）：stop_reason=max_tokens 表示輸出被
         上限截斷——新一代會先「思考」的模型很容易吃掉大量輸出額度，截斷的
         tool_use/JSON 若流出去，部分解析會讓漏判項目默默套保守後備值（例如
-        留用初判整批被誤標不留用）。把額度加大三倍後拋錯，交由重試迴圈重送。"""
+        留用初判整批被誤標不留用）。把額度加大三倍後拋錯，交由重試迴圈重送；
+        學到的額度記在 _LEARNED_MIN_TOKENS，同任務的後續批次直接用大額度起跳，
+        不必每批都先浪費一次被截斷的呼叫。"""
         if getattr(resp, "stop_reason", "") != "max_tokens":
             return
         old_budget = params.get("max_tokens", 0) or 1024
         params["max_tokens"] = min(old_budget * 3, 32000)
+        if task:
+            _LEARNED_MIN_TOKENS[task] = max(_LEARNED_MIN_TOKENS.get(task, 0),
+                                             params["max_tokens"])
         raise GatewayError(
             GatewayErrorType.PARSE_ERROR,
             f"模型輸出達 max_tokens 上限被截斷（{old_budget} → 已自動調高為 "

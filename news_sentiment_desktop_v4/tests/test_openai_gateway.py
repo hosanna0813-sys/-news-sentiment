@@ -141,10 +141,12 @@ def test_temperature_self_healing(fake_openai):
     assert "temperature" not in fake_openai["calls"][-1]
 
 
-def test_truncated_output_retries_with_bigger_budget(fake_openai):
+def test_truncated_output_retries_with_bigger_budget(fake_openai, monkeypatch):
     """finish_reason=length（輸出達 max_tokens 上限被截斷）→ 自動加大額度重試。
     截斷的 JSON 若流出去，部分解析會讓漏判項目默默套保守後備值
-    （留用初判整批被誤標不留用的根因之一）。"""
+    （留用初判整批被誤標不留用的根因之一）。學到的額度會記住供後續批次起跳。"""
+    from app.services.ai import openai_gateway as og
+    monkeypatch.setattr(og, "_LEARNED_MIN_TOKENS", {})
     calls = fake_openai["calls"]
 
     def handler(kw):
@@ -160,6 +162,11 @@ def test_truncated_output_retries_with_bigger_budget(fake_openai):
     first_budget = calls[0].get("max_completion_tokens") or calls[0].get("max_tokens")
     second_budget = calls[1].get("max_completion_tokens") or calls[1].get("max_tokens")
     assert second_budget == first_budget * 3   # 加大三倍重試
+
+    # 同任務的下一批直接以學到的額度起跳
+    gw.call_with_tool("t", "s", "u", "tool", {"type": "object"})
+    third_budget = calls[2].get("max_completion_tokens") or calls[2].get("max_tokens")
+    assert third_budget == second_budget
 
 
 def test_retry_on_rate_limit_then_success(fake_openai):

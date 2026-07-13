@@ -88,10 +88,13 @@ def test_gateway_strips_deprecated_param_and_learns(fake_anthropic_module):
     assert len(calls) == 1 and "temperature" not in calls[0]
 
 
-def test_truncated_output_grows_budget_and_retries(fake_anthropic_module):
+def test_truncated_output_grows_budget_and_retries(fake_anthropic_module, monkeypatch):
     """stop_reason=max_tokens（輸出被截斷）→ 自動加大額度重試（V4.5.2，
     與 OpenAIGateway 對稱）。截斷的 tool_use 若流出去，漏判項目會默默套
-    保守後備值——留用初判整批被誤標不留用的根因。"""
+    保守後備值——留用初判整批被誤標不留用的根因。學到的額度會記住，
+    同任務後續批次直接用大額度起跳（不必每批浪費一次截斷呼叫）。"""
+    from app.services.ai import model_gateway as mg
+    monkeypatch.setattr(mg, "_LEARNED_MIN_TOKENS", {})
     class ToolBlock:
         type = "tool_use"
         input = {"judgements": []}
@@ -119,6 +122,11 @@ def test_truncated_output_grows_budget_and_retries(fake_anthropic_module):
     assert result.stop_reason == "tool_use"
     assert len(calls) == 2
     assert calls[1]["max_tokens"] == calls[0]["max_tokens"] * 3   # 截斷後加大三倍重送
+
+    # 同任務的下一批直接以學到的額度起跳，不再從設定值重新被截斷一次
+    gw.call_with_tool(task="retention_judgement", system_prompt="s", user_content="u",
+                       tool_name="t", tool_schema={"type": "object"})
+    assert calls[2]["max_tokens"] == calls[1]["max_tokens"]
 
 
 def test_non_param_invalid_request_not_retried(fake_anthropic_module):
