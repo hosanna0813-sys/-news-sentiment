@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.workers.topic_analysis_worker import TopicAnalysisWorker
 
@@ -24,13 +25,15 @@ class SummarizationPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 6：AI 議題綜整")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
 
         toolbar = QHBoxLayout()
         self.btn_start = QPushButton("執行議題綜整與立場分析")
+        mark_primary(self.btn_start)
         self.btn_start.clicked.connect(self._on_start)
         self.btn_cancel = QPushButton("取消")
+        mark_danger(self.btn_cancel)
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self._on_cancel)
         toolbar.addWidget(self.btn_start)

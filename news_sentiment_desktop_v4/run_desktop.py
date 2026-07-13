@@ -23,12 +23,12 @@ def main() -> int:
     from PySide6.QtWidgets import QApplication
     from app.controllers.app_context import AppContext
     from app.ui.main_window import MainWindow
+    from app.ui.theme import apply_theme
 
     app = QApplication(sys.argv)
     app.setApplicationName("新聞輿情系統 Desktop V4.0")
     app.setOrganizationName("NewsSentimentDesktopV4")
-    # 全域按鈕樣式：加大 padding 讓按鈕在各頁面都更明顯、更好點擊
-    app.setStyleSheet("QPushButton { padding: 6px 14px; }")
+    apply_theme(app)   # 全域主題（淡色專業風）：Fusion + 字型 + QSS，見 app/ui/theme.py
 
     ctx = AppContext(debug=args.debug)
 

@@ -39,7 +39,7 @@ class TopicAdjustmentPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 5：人工調整議題")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
 
         splitter = QSplitter(Qt.Horizontal)

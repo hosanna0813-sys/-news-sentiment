@@ -6,8 +6,8 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QListWidget, QListWidgetItem, QStackedWidget,
-    QToolBar, QStatusBar, QLabel,
+    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem,
+    QStackedWidget, QToolBar, QStatusBar, QLabel,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -21,6 +21,15 @@ from app.ui.pages import (
 NAV_ITEMS = [
     "1. 匯入新聞", "2. 確認留用", "3. 抓取正文", "4. AI 議題分群", "5. 人工調整議題",
     "6. AI 議題綜整", "7. 回饋與規則草案", "8. Prompt 調校建議", "9. Word 匯出", "10. 系統設定",
+]
+
+# 側欄分組（V4.5.0）：(分組標題, [NAV_ITEMS 索引 = stack 頁面索引])。
+# 分組標題列不可選取，所以側欄的 row 不再等於 stack index——
+# 每個可選項以 Qt.UserRole 記住自己的頁面索引，切換時讀 data 而非 row。
+NAV_GROUPS = [
+    ("每日流程", [0, 1, 2, 3, 4, 5]),
+    ("智慧學習", [6, 7]),
+    ("輸出與設定", [8, 9]),
 ]
 
 
@@ -48,20 +57,45 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.api_status_label)
 
     def _api_status_text(self) -> str:
-        from app.utils.secure_key_store import load_api_key, mask_api_key
-        return f"API Key：{mask_api_key(load_api_key())}"
+        from app.utils.secure_key_store import (
+            load_api_key, load_openai_api_key, mask_api_key,
+        )
+        if self.ctx.settings.api.provider == "openai":
+            return f"OpenAI｜{mask_api_key(load_openai_api_key())}"
+        return f"Anthropic｜{mask_api_key(load_api_key())}"
 
     def _build_central(self):
         central = QWidget()
         layout = QHBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 側欄：頂部系統名稱 + 分組導覽清單（背景同色，視覺上是一整塊深藍側欄）
+        sidebar = QWidget()
+        sidebar.setObjectName("sidebar")
+        side_layout = QVBoxLayout(sidebar)
+        side_layout.setContentsMargins(0, 0, 0, 0)
+        side_layout.setSpacing(0)
+        app_title = QLabel("內政部輿情系統")
+        app_title.setObjectName("appTitle")
+        app_subtitle = QLabel("新聞監測 · 晨會彙整")
+        app_subtitle.setObjectName("appSubtitle")
+        side_layout.addWidget(app_title)
+        side_layout.addWidget(app_subtitle)
 
         self.nav_list = QListWidget()
-        self.nav_list.setFixedWidth(180)
-        for label in NAV_ITEMS:
-            QListWidgetItem(label, self.nav_list)
-        self.nav_list.currentRowChanged.connect(self._on_nav_changed)
-        layout.addWidget(self.nav_list)
+        self.nav_list.setObjectName("navList")
+        for group_title, page_indices in NAV_GROUPS:
+            header = QListWidgetItem(group_title, self.nav_list)
+            header.setFlags(Qt.NoItemFlags)   # 分組標題：不可選、不可 hover 選取
+            for page_index in page_indices:
+                item = QListWidgetItem(NAV_ITEMS[page_index], self.nav_list)
+                item.setData(Qt.UserRole, page_index)
+        self.nav_list.currentItemChanged.connect(self._on_nav_item_changed)
+        side_layout.addWidget(self.nav_list, 1)
+
+        sidebar.setFixedWidth(210)
+        layout.addWidget(sidebar)
 
         self.stack = QStackedWidget()
         self.import_page = ImportPage(self.ctx)
@@ -82,7 +116,7 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self.stack, 1)
         self.setCentralWidget(central)
-        self.nav_list.setCurrentRow(0)
+        self.nav_list.setCurrentRow(1)   # row 0 是分組標題（不可選），第一個可選項在 row 1
 
     def _build_status_bar(self):
         self.status_bar = QStatusBar()
@@ -124,11 +158,15 @@ class MainWindow(QMainWindow):
             "（已完成的批次不會重做）。")
         self.status_bar.showMessage(f"偵測到 {len(resumable)} 項未完成工作，可續跑")
 
-    def _on_nav_changed(self, index: int):
-        self.stack.setCurrentIndex(index)
-        page = self.stack.currentWidget()
+    def _on_nav_item_changed(self, current, previous):
+        if current is None:
+            return
+        page_index = current.data(Qt.UserRole)
+        if page_index is None:
+            return   # 分組標題列（理論上不可選，防禦性檢查）
+        self.stack.setCurrentIndex(page_index)
         self._on_refresh_current_page()
-        self.status_bar.showMessage(NAV_ITEMS[index])
+        self.status_bar.showMessage(NAV_ITEMS[page_index])
 
     def _on_refresh_current_page(self):
         page = self.stack.currentWidget()

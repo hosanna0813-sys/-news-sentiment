@@ -24,7 +24,7 @@ class FeedbackRulesPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 7：回饋與規則草案")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
         root.addWidget(QLabel("規則草案由 AI 依人工回饋歸納產生，不會自動生效，需人工採用／編輯／停用／刪除。"))
 

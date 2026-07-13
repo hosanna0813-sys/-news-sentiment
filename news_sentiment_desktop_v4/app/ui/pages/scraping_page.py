@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView,
 )
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.workers.scraping_worker import build_scraping_worker
 from app.services.scraping.body_scraper import BodyScraper
@@ -37,14 +38,16 @@ class ScrapingPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 3：抓取正文")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
         root.addWidget(QLabel("僅抓取已留用新聞的正文；已有 Excel 正文或已成功抓取者不會重複抓取。"))
 
         toolbar = QHBoxLayout()
         self.btn_start = QPushButton("抓取已留用新聞正文")
+        mark_primary(self.btn_start)
         self.btn_start.clicked.connect(self._on_start)
         self.btn_cancel = QPushButton("取消")
+        mark_danger(self.btn_cancel)
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self._on_cancel)
         self.btn_retry_failed = QPushButton("重試失敗項目")
@@ -62,16 +65,18 @@ class ScrapingPage(QWidget):
         root.addWidget(self.progress_label)
 
         self.table = QTableWidget(0, 4)
+        self.table.setAlternatingRowColors(True)
         self.table.setHorizontalHeaderLabels(["標題", "來源", "抓取狀態", "詳細原因"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
         # 站點成功率儀表板（V4.2.0）
         self.stats_table = QTableWidget(0, 7)
+        self.stats_table.setAlternatingRowColors(True)
         self.stats_table.setHorizontalHeaderLabels(
             ["站點", "成功率", "成功", "失敗", "略過", "平均耗時(秒)", "最後成功時間"])
         self.stats_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.alert_label = QLabel("")
-        self.alert_label.setStyleSheet("color: #b71c1c; font-weight: bold;")
+        self.alert_label.setObjectName("alertLabel")
         self.alert_label.setWordWrap(True)
 
         from PySide6.QtWidgets import QTabWidget

@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QProgressBar, QListWidget,
 )
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.workers.clustering_worker import ClusteringWorker
 
@@ -19,14 +20,16 @@ class ClusteringPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 4：AI 議題分群")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
         root.addWidget(QLabel("只依據已取得正文的留用新聞進行分群；正文不足者會標記為「正文不足待人工確認」。"))
 
         toolbar = QHBoxLayout()
         self.btn_start = QPushButton("執行 AI 議題分群")
+        mark_primary(self.btn_start)
         self.btn_start.clicked.connect(self._on_start)
         self.btn_cancel = QPushButton("取消")
+        mark_danger(self.btn_cancel)
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self._on_cancel)
         toolbar.addWidget(self.btn_start)

@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtCore import QUrl
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.ui.widgets.news_table_model import NewsTableModel, COLUMNS
 from app.workers.retention_worker import build_retention_worker
@@ -31,17 +32,19 @@ class RetentionPage(QWidget):
         root = QVBoxLayout(self)
 
         title = QLabel("步驟 2：確認留用")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
 
         toolbar = QHBoxLayout()
         self.btn_refresh = QPushButton("重新整理清單")
         self.btn_refresh.clicked.connect(self.reload_data)
         self.btn_ai_judge = QPushButton("執行 AI 留用初判")
+        mark_primary(self.btn_ai_judge)
         self.btn_ai_judge.clicked.connect(self._on_ai_judge)
         self.btn_retry_failed = QPushButton("重試失敗批次")
         self.btn_retry_failed.clicked.connect(self._on_retry_failed_batches)
         self.btn_cancel_job = QPushButton("取消")
+        mark_danger(self.btn_cancel_job)
         self.btn_cancel_job.setEnabled(False)
         self.btn_cancel_job.clicked.connect(self._on_cancel_job)
         toolbar.addWidget(self.btn_refresh)
@@ -80,6 +83,7 @@ class RetentionPage(QWidget):
         splitter = QSplitter(Qt.Horizontal)
 
         self.table_view = QTableView()
+        self.table_view.setAlternatingRowColors(True)
         self.model = NewsTableModel([])
         self.table_view.setModel(self.model)
         header = self.table_view.horizontalHeader()

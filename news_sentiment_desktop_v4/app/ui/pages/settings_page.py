@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.utils.secure_key_store import (
     save_api_key, load_api_key, clear_api_key, mask_api_key,
@@ -32,7 +33,7 @@ class SettingsPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("系統設定")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
 
         tabs = QTabWidget()
@@ -85,8 +86,10 @@ class SettingsPage(QWidget):
         openai_form.addRow("新的 API Key：", self.openai_key_input)
         openai_btn_row = QHBoxLayout()
         btn_openai_save = QPushButton("儲存")
+        mark_primary(btn_openai_save)
         btn_openai_save.clicked.connect(self._on_save_openai_key)
         btn_openai_clear = QPushButton("一鍵清除")
+        mark_danger(btn_openai_clear)
         btn_openai_clear.clicked.connect(self._on_clear_openai_key)
         openai_btn_row.addWidget(btn_openai_save)
         openai_btn_row.addWidget(btn_openai_clear)
@@ -104,10 +107,12 @@ class SettingsPage(QWidget):
 
         btn_row = QHBoxLayout()
         btn_save = QPushButton("儲存")
+        mark_primary(btn_save)
         btn_save.clicked.connect(self._on_save_key)
         btn_test = QPushButton("測試連線（目前供應商）")
         btn_test.clicked.connect(self._on_test_key)
         btn_clear = QPushButton("一鍵清除")
+        mark_danger(btn_clear)
         btn_clear.clicked.connect(self._on_clear_key)
         btn_row.addWidget(btn_save)
         btn_row.addWidget(btn_test)
@@ -161,6 +166,7 @@ class SettingsPage(QWidget):
         api_form.addRow("留用優先級門檻（星，達此星數才留用）：", self.retention_threshold_spin)
         api_form.addRow("留用平行批次數：", self.retention_concurrency_spin)
         btn_save_api = QPushButton("儲存 API 設定")
+        mark_primary(btn_save_api)
         btn_save_api.clicked.connect(self._on_save_api_settings)
         api_form.addRow(btn_save_api)
         layout.addWidget(api_group)
@@ -259,6 +265,7 @@ class SettingsPage(QWidget):
         layout.addLayout(form)
 
         btn_save = QPushButton("儲存任務模型設定")
+        mark_primary(btn_save)
         btn_save.clicked.connect(self._on_save_task_models)
         layout.addWidget(btn_save)
         layout.addStretch()
@@ -331,6 +338,7 @@ class SettingsPage(QWidget):
 
         btn_row = QHBoxLayout()
         btn_save_prompt = QPushButton("儲存為新版本")
+        mark_primary(btn_save_prompt)
         btn_save_prompt.clicked.connect(self._on_save_prompt)
         btn_restore = QPushButton("還原預設")
         btn_restore.clicked.connect(self._on_restore_prompt)
@@ -498,6 +506,7 @@ class SettingsPage(QWidget):
         form.addRow("瀏覽器渲染逾時秒數：", self.browser_timeout_spin)
 
         btn_save = QPushButton("儲存抓取設定")
+        mark_primary(btn_save)
         btn_save.clicked.connect(self._on_save_scraping)
         form.addRow(btn_save)
         return w
@@ -547,6 +556,7 @@ class SettingsPage(QWidget):
         form.addRow("段落間距（pt）：", self.spacing_spin)
 
         btn_save = QPushButton("儲存 Word 樣式設定")
+        mark_primary(btn_save)
         btn_save.clicked.connect(self._on_save_word_settings)
         form.addRow(btn_save)
         return w
@@ -590,6 +600,7 @@ class SettingsPage(QWidget):
         self.btn_connect_gmail = QPushButton("連接 Gmail 帳號")
         self.btn_connect_gmail.clicked.connect(self._on_connect_gmail)
         btn_clear_gmail = QPushButton("清除授權")
+        mark_danger(btn_clear_gmail)
         btn_clear_gmail.clicked.connect(self._on_clear_gmail)
         btn_row.addWidget(self.btn_connect_gmail)
         btn_row.addWidget(btn_clear_gmail)
@@ -609,6 +620,7 @@ class SettingsPage(QWidget):
         filter_form.addRow(QLabel("擷取的起訖日期時間每次匯入時另外於對話框指定，不在此設定"))
 
         btn_save_gmail = QPushButton("儲存 Gmail 設定")
+        mark_primary(btn_save_gmail)
         btn_save_gmail.clicked.connect(self._on_save_gmail_settings)
         filter_form.addRow(btn_save_gmail)
         layout.addWidget(filter_group)

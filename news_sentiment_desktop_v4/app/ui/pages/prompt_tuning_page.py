@@ -48,7 +48,7 @@ class PromptTuningPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 8：Prompt 調校建議")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
         root.addWidget(QLabel(
             "AI 依近期人工留用修正紀錄提出留用判斷 Prompt 的文字改良建議；"
@@ -76,6 +76,7 @@ class PromptTuningPage(QWidget):
         detail_layout.addWidget(self.detail_text, 1)
 
         self.metrics_table = QTableWidget(0, 4)
+        self.metrics_table.setAlternatingRowColors(True)
         self.metrics_table.setHorizontalHeaderLabels(["指標", "目前 Prompt", "建議 Prompt", "差異"])
         self.metrics_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         detail_layout.addWidget(self.metrics_table)

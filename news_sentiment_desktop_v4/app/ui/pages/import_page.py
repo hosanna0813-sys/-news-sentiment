@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QDateTime
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.workers.import_worker import ImportWorker
 from app.workers.gmail_import_worker import GmailImportWorker
@@ -27,7 +28,7 @@ class ImportPage(QWidget):
         layout = QVBoxLayout(self)
 
         title = QLabel("步驟 1：匯入新聞")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         layout.addWidget(title)
 
         btn_row = QHBoxLayout()
@@ -35,9 +36,11 @@ class ImportPage(QWidget):
         self.btn_pick.clicked.connect(self._on_pick_file)
         btn_row.addWidget(self.btn_pick)
         self.btn_gmail = QPushButton("從 Gmail 擷取（指定時間區間）...")
+        mark_primary(self.btn_gmail)
         self.btn_gmail.clicked.connect(self._on_fetch_gmail)
         btn_row.addWidget(self.btn_gmail)
         self.btn_clear = QPushButton("清除已匯入新聞")
+        mark_danger(self.btn_clear)
         self.btn_clear.clicked.connect(self._on_clear_all)
         btn_row.addWidget(self.btn_clear)
         btn_row.addStretch()

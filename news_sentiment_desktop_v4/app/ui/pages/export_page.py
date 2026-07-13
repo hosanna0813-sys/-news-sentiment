@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QComboBox, QSpinBox, QFormLayout, QGroupBox,
 )
 
+from app.ui.theme import mark_primary, mark_danger
 from app.controllers.app_context import AppContext
 from app.exporters.word_exporter import export_daily_report, export_simple_topic_list
 from app.utils.paths import get_exports_dir
@@ -20,7 +21,7 @@ class ExportPage(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
         title = QLabel("步驟 8：Word 早報匯出")
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setObjectName("pageTitle")
         root.addWidget(title)
 
         opt_group = QGroupBox("匯出選項")
@@ -46,6 +47,7 @@ class ExportPage(QWidget):
         root.addLayout(path_row)
 
         btn_export = QPushButton("匯出 Word 早報")
+        mark_primary(btn_export)
         btn_export.clicked.connect(self._on_export)
         root.addWidget(btn_export)
 
