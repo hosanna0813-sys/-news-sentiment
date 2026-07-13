@@ -71,6 +71,9 @@ class ScrapingSettings:
         "setn.com": "#Content1",              # 三立新聞網
         "ftvnews.com.tw": "#newscontent",     # 民視新聞
         "mirrormedia.mg": "article",          # 鏡週刊（多為付費牆，命中機會低）
+        # 競業信息（XKM）剪報全文頁——報紙監測報告的標題連結指向這裡，
+        # 已用真實頁面驗證 div.dataView 即剪報全文（每頁恰一個）
+        "rmbjbtw.rmb.com.tw": "div.dataView",
     })
 
 

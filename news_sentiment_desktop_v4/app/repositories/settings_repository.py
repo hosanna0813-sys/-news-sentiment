@@ -108,7 +108,14 @@ class AppSettingsRepository:
             data = json.loads(row["value_json"])
             settings = AppSettings()
             settings.api.__dict__.update(data.get("api", {}))
+            default_site_selectors = dict(settings.scraping.site_selectors)
             settings.scraping.__dict__.update(data.get("scraping", {}))
+            # 程式內建的新站點 selector 要能送達既有安裝：使用者存過設定後，
+            # 儲存的 site_selectors 會整包覆蓋預設 dict，之後版本新增的預設站點
+            # （如 XKM 剪報頁）就永遠進不來。這裡把「使用者沒設定過的站點」補回，
+            # 使用者自己改過/刪除同站點的值仍以使用者為準。
+            for domain, sel in default_site_selectors.items():
+                settings.scraping.site_selectors.setdefault(domain, sel)
             settings.word_export.__dict__.update(data.get("word_export", {}))
             settings.gmail.__dict__.update(data.get("gmail", {}))
             settings.task_models = data.get("task_models", settings.task_models)

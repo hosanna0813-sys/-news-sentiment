@@ -13,9 +13,11 @@
 
 2. 報紙新聞監測報告（V4.4.1 新增）——純表格，欄位：
     則數｜監測日期｜媒體｜媒體名稱｜主版位｜版位｜訊息標題｜記者｜廣告效益
-   以「{區塊名}－共N則」單欄列分區（內政部／三大報頭版／社論投書），
-   **沒有原文連結、沒有內文**——匯入後標記 body_source=NEWSPAPER_BODY_SOURCE，
-   不進正文抓取（無網址可抓），留用初判與議題分群改以標題參與判斷。
+   以「{區塊名}－共N則」單欄列分區（內政部／三大報頭版／社論投書）。
+   標題儲存格的超連結指向 XKM 系統的剪報全文頁（免登入可讀），當作 url 交給
+   正文抓取階段取回剪報全文（該站的主文容器 div.dataView 已列入
+   ScrapingSettings.site_selectors 預設）；個別列沒有連結時退回以標題參與
+   留用初判與議題分群。匯入後標記 body_source=NEWSPAPER_BODY_SOURCE。
 
 網路版解析策略：**依真實 HTML 文件順序（`soup.descendants`）單一遍歷，維護一個
 「目前是否有新聞正在處理中」的狀態機**，而非分開抓文字結構跟全域 Source 連結清單
@@ -134,11 +136,19 @@ def _extract_newspaper_articles(soup) -> List[Dict[str, Any]]:
             continue
         if not title.strip():
             continue
+        # 標題儲存格內的超連結指向 XKM 系統的剪報全文頁（免登入可讀），
+        # 當作這則新聞的 url——後續正文抓取直接從該頁取得剪報全文
+        url = ""
+        tds = tr.find_all(["td", "th"])
+        if len(tds) >= 7:
+            link = tds[6].find("a")
+            if link is not None:
+                url = (link.get("href") or "").strip()
         articles.append({
             "published_at": date, "source": media_name.strip(),
             "channel": f"{media_type.strip()} {main_page.strip()} {page_section.strip()}".strip(),
             "author": author.strip(), "title": normalize_whitespace(title),
-            "section": section,
+            "section": section, "url": url,
         })
     return articles
 
@@ -147,6 +157,7 @@ def _newspaper_articles_to_items(articles: List[Dict[str, Any]],
                                   import_batch_id: str) -> List[NewsItem]:
     items: List[NewsItem] = []
     for art in articles:
+        url = art.get("url", "")
         items.append(NewsItem(
             row_id=new_id("row_"),
             import_batch_id=import_batch_id,
@@ -156,14 +167,17 @@ def _newspaper_articles_to_items(articles: List[Dict[str, Any]],
             source=art["source"],
             published_at=art["published_at"],
             author=art["author"],
-            url="",                       # 報紙報告沒有原文連結
+            url=url,                      # XKM 剪報全文頁（標題儲存格的超連結）
             channel=art["channel"],       # 例：報紙 A01 要聞（版位是留用判斷的重要訊號）
             tags=art["section"],          # 內政部／三大報頭版／社論投書
             excel_body="",
             body_text="",
             body_source=NEWSPAPER_BODY_SOURCE,
-            body_fetch_status="略過",
-            body_fetch_detail="報紙監測報告無原文連結，留用與分群以標題參與判斷",
+            # 有連結：走正文抓取（XKM 頁的 div.dataView 有剪報全文，見
+            # ScrapingSettings.site_selectors 預設）；沒連結：標「略過」不進抓取，
+            # 留用與分群退回以標題參與判斷
+            body_fetch_status="未抓取" if url else "略過",
+            body_fetch_detail="" if url else "報紙監測報告此則無全文連結，留用與分群以標題參與判斷",
             body_word_count=0,
             retained=True,
             retention_status="待確認",
@@ -186,7 +200,9 @@ def parse_report_html(html: str, import_batch_id: str = "") -> List[NewsItem]:
         newspaper = _extract_newspaper_articles(soup)
         if newspaper:
             items = _newspaper_articles_to_items(newspaper, import_batch_id)
-            logger.info(f"Gmail 報紙監測報告解析完成，共 {len(items)} 則（無原文連結，以標題參與判斷）")
+            with_url = sum(1 for it in items if it.url)
+            logger.info(f"Gmail 報紙監測報告解析完成，共 {len(items)} 則"
+                         f"（{with_url} 則有 XKM 全文連結，可抓取剪報正文）")
             return items
         logger.warning("Gmail 報告內文找不到任何符合格式的「【日期 來源 - 版面 記者】」中繼資料列，"
                         "也不是報紙監測報告的表格版型，需對照真實 HTML 調整解析規則")

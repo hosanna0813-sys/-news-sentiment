@@ -48,10 +48,12 @@ def build_scraping_worker(items: List[NewsItem], scraper: BodyScraper,
     from urllib.parse import urlparse
     from app.utils.text_utils import title_body_overlap
     from app.services.gmail.gmail_report_parser import NEWSPAPER_BODY_SOURCE
-    # 報紙監測新聞本來就沒有原文連結（設計如此，非資料缺漏），排除在抓取之外，
-    # 避免每次執行都被重複標記「無網址可抓取」失敗
+    # 報紙監測新聞有 XKM 全文連結者照常抓取（剪報全文頁）；個別沒有連結的列
+    # 排除在抓取之外（設計如此，非資料缺漏），避免每次執行都被重複標記
+    # 「無網址可抓取」失敗
     to_fetch = [it for it in items if it.body_fetch_status != "成功"
-                and it.body_source not in ("Excel正文", NEWSPAPER_BODY_SOURCE)]
+                and it.body_source != "Excel正文"
+                and not (it.body_source == NEWSPAPER_BODY_SOURCE and not it.url)]
     batches = [to_fetch[i:i + batch_size] for i in range(0, len(to_fetch), batch_size)]
 
     # 以 dict 包裝讓閉包可改寫；瀏覽器實例跨批次共用，工作結束時由 worker 收尾

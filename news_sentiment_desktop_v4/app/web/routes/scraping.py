@@ -35,9 +35,10 @@ def build_scraping_job_inputs(ctx):
     /scraping/run 與「一鍵完成」流程（app/web/routes/pipeline.py）共用同一份，
     不重複維護。"""
     from app.services.gmail.gmail_report_parser import NEWSPAPER_BODY_SOURCE
-    # 報紙監測新聞沒有原文連結（設計如此），不進抓取
+    # 報紙監測新聞有 XKM 全文連結者照常抓取（剪報全文頁）；個別沒有連結的列
+    # 不進抓取（設計如此，非資料缺漏），避免每次都被標「無網址可抓取」失敗
     items = [it for it in ctx.news_repo.list_retained_without_body()
-             if it.body_source != NEWSPAPER_BODY_SOURCE]
+             if not (it.body_source == NEWSPAPER_BODY_SOURCE and not it.url)]
     if not items:
         return [], None
 
