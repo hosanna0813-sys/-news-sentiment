@@ -34,6 +34,51 @@ DANGER_BG = "#FDECEA"
 STRIPE = "#F7F9FC"           # 表格斑馬紋
 
 
+# 下拉框／數字欄位的三角形箭頭圖示：QSS 蓋掉原生樣式後必須自己提供箭頭圖，
+# 純 QSS 的 border 三角形技巧在 Qt 上會畫成色塊（實測），所以改在套用主題時
+# 用 QPainter 產生小 PNG 存到資料目錄，QSS 以 url() 引用。
+_ICON_PATHS: dict = {}
+
+
+def _ensure_arrow_icons() -> None:
+    """產生上下三角形圖示（需要 QApplication 已建立；失敗時安靜略過，
+    只是箭頭不顯示，展開按鈕本身仍在）"""
+    if _ICON_PATHS:
+        return
+    try:
+        from PySide6.QtGui import QPixmap, QPainter, QColor, QPolygon
+        from PySide6.QtCore import QPoint, Qt as _Qt
+        from app.utils.paths import get_app_data_dir
+        icon_dir = get_app_data_dir() / "theme"
+        icon_dir.mkdir(parents=True, exist_ok=True)
+        shapes = {
+            "arrow_down": [(1, 3), (9, 3), (5, 8)],
+            "arrow_up": [(1, 7), (9, 7), (5, 2)],
+        }
+        for name, pts in shapes.items():
+            path = icon_dir / f"{name}.png"
+            pm = QPixmap(10, 10)
+            pm.fill(QColor(0, 0, 0, 0))
+            painter = QPainter(pm)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QColor(PRIMARY))
+            painter.setPen(_Qt.NoPen)
+            painter.drawPolygon(QPolygon([QPoint(x, y) for x, y in pts]))
+            painter.end()
+            if pm.save(str(path)):
+                _ICON_PATHS[name] = path.as_posix()   # QSS url() 用正斜線（含 Windows）
+    except Exception:
+        pass
+
+
+def _arrow_rule(selector: str, icon_name: str, size: int) -> str:
+    path = _ICON_PATHS.get(icon_name)
+    if path:
+        return (f'{selector} {{ image: url("{path}"); '
+                f'width: {size}px; height: {size}px; }}')
+    return f"{selector} {{ width: {size}px; height: {size}px; }}"
+
+
 def build_stylesheet() -> str:
     return f"""
 /* ---- 基底 ---- */
@@ -129,11 +174,41 @@ QSpinBox:focus, QDoubleSpinBox:focus, QDateTimeEdit:focus {{
 QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled, QSpinBox:disabled {{
     background: #EEF1F5; color: {TEXT_MUTED};
 }}
-QComboBox::drop-down {{ border: none; width: 22px; }}
+/* 下拉框右側要有明顯的展開按鈕＋箭頭（QSS 蓋掉原生樣式後必須自己畫，
+   否則下拉選單看起來跟文字框一模一樣，使用者不知道可以展開） */
+QComboBox::drop-down {{
+    subcontrol-origin: padding; subcontrol-position: center right;
+    width: 26px; border-left: 1px solid {BORDER};
+    border-top-right-radius: 6px; border-bottom-right-radius: 6px;
+    background: #EDF2F8;
+}}
+QComboBox::drop-down:hover {{ background: {PRIMARY_TINT}; }}
+{_arrow_rule("QComboBox::down-arrow", "arrow_down", 10)}
 QComboBox QAbstractItemView {{
     background: {SURFACE}; border: 1px solid {BORDER};
     selection-background-color: {PRIMARY_TINT}; selection-color: {TEXT};
 }}
+/* 數字/日期欄位的上下調整鈕同理，自己畫出按鈕與箭頭 */
+QSpinBox::up-button, QDoubleSpinBox::up-button, QDateTimeEdit::up-button,
+QDateEdit::up-button, QTimeEdit::up-button {{
+    subcontrol-origin: border; subcontrol-position: top right; width: 22px;
+    border-left: 1px solid {BORDER}; border-bottom: 1px solid {BORDER};
+    border-top-right-radius: 6px; background: #EDF2F8;
+}}
+QSpinBox::down-button, QDoubleSpinBox::down-button, QDateTimeEdit::down-button,
+QDateEdit::down-button, QTimeEdit::down-button {{
+    subcontrol-origin: border; subcontrol-position: bottom right; width: 22px;
+    border-left: 1px solid {BORDER};
+    border-bottom-right-radius: 6px; background: #EDF2F8;
+}}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover, QDateTimeEdit::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover, QDateTimeEdit::down-button:hover {{
+    background: {PRIMARY_TINT};
+}}
+{_arrow_rule("QSpinBox::up-arrow, QDoubleSpinBox::up-arrow, QDateTimeEdit::up-arrow, "
+              "QDateEdit::up-arrow, QTimeEdit::up-arrow", "arrow_up", 8)}
+{_arrow_rule("QSpinBox::down-arrow, QDoubleSpinBox::down-arrow, QDateTimeEdit::down-arrow, "
+              "QDateEdit::down-arrow, QTimeEdit::down-arrow", "arrow_down", 8)}
 QCheckBox {{ spacing: 6px; }}
 QCheckBox::indicator {{
     width: 16px; height: 16px; border: 1px solid {BORDER}; border-radius: 4px;
@@ -216,6 +291,7 @@ def apply_theme(app) -> None:
     font = QFont("Microsoft JhengHei UI", 10)
     font.setStyleHint(QFont.SansSerif)
     app.setFont(font)
+    _ensure_arrow_icons()   # 需在 QApplication 建立後、組 QSS 前產生
     app.setStyleSheet(build_stylesheet())
 
 
