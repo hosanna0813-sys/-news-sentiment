@@ -34,7 +34,10 @@ def build_scraping_job_inputs(ctx):
     與 retention.py / clustering.py 的 build_*_job_inputs() 同樣理由：
     /scraping/run 與「一鍵完成」流程（app/web/routes/pipeline.py）共用同一份，
     不重複維護。"""
-    items = ctx.news_repo.list_retained_without_body()
+    from app.services.gmail.gmail_report_parser import NEWSPAPER_BODY_SOURCE
+    # 報紙監測新聞沒有原文連結（設計如此），不進抓取
+    items = [it for it in ctx.news_repo.list_retained_without_body()
+             if it.body_source != NEWSPAPER_BODY_SOURCE]
     if not items:
         return [], None
 

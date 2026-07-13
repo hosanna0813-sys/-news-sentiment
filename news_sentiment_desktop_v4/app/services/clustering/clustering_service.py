@@ -148,11 +148,18 @@ def unassign_news_from_topic(news_repo, feedback_repo, row_ids: List[str],
 
 
 def split_insufficient_body(items: List[NewsItem]) -> (List[NewsItem], List[NewsItem]):
-    """回傳 (可分群新聞, 正文不足新聞)；「可疑」正文視為不足，不進入分群（V4.2.0）"""
+    """回傳 (可分群新聞, 正文不足新聞)；「可疑」正文視為不足，不進入分群（V4.2.0）。
+
+    V4.4.1 例外：報紙監測新聞（body_source=NEWSPAPER_BODY_SOURCE）本來就沒有
+    原文可抓（設計如此，非抓取失敗），有標題即可參與分群——分群 prompt 對
+    body_excerpt 為空的項目已明示改依標題判斷。"""
+    from app.services.gmail.gmail_report_parser import NEWSPAPER_BODY_SOURCE
     ok, insufficient = [], []
     for it in items:
         if (it.body_word_count >= MIN_BODY_WORDS_FOR_CLUSTERING and it.body_text
                 and it.body_fetch_status != "可疑"):
+            ok.append(it)
+        elif it.body_source == NEWSPAPER_BODY_SOURCE and it.title:
             ok.append(it)
         else:
             insufficient.append(it)
