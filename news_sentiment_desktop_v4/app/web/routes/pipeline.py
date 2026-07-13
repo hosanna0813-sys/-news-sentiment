@@ -100,7 +100,9 @@ def run():
             # 1. 匯入
             _set_stage(job_repo, job.job_id, 0, "連接 Gmail、搜尋符合條件的信件中...")
             result = import_from_gmail(thread_ctx.settings.gmail, start_dt, end_dt)
-            thread_ctx.news_repo.upsert_many(result.items)
+            from app.services.gmail.gmail_report_parser import repair_newspaper_rows
+            to_insert, _repaired = repair_newspaper_rows(thread_ctx.news_repo, result.items)
+            thread_ctx.news_repo.upsert_many(to_insert)
             _set_stage(job_repo, job.job_id, 1, f"已成功匯入 {len(result.items)} 則新聞，開始抓取正文")
 
             # 2. 抓正文

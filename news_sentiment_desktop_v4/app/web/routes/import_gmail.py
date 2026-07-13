@@ -42,7 +42,11 @@ def index():
             flash(str(e), "error")
             return redirect(url_for("import_gmail.index"))
 
-        ctx.news_repo.upsert_many(result.items)
+        from app.services.gmail.gmail_report_parser import repair_newspaper_rows
+        to_insert, repaired = repair_newspaper_rows(ctx.news_repo, result.items)
+        ctx.news_repo.upsert_many(to_insert)
+        if repaired:
+            flash(f"已為 {repaired} 則既有報紙新聞補上全文連結（未新增重複列）", "success")
         result_summary = {
             "file_name": result.file_name,
             "total_rows": result.total_rows,

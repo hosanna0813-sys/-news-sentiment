@@ -50,7 +50,12 @@ class GmailImportWorker(QThread):
             self.progress.emit(f"寫入資料庫中（{len(result.items)} 筆）...")
             repo = NewsRepository(db_path=None)
             repo.conn = get_connection()
-            repo.upsert_many(result.items)
+            # 重新匯入同一封報紙監測報告：補既有列的全文連結、不插入重複列
+            from app.services.gmail.gmail_report_parser import repair_newspaper_rows
+            to_insert, repaired = repair_newspaper_rows(repo, result.items)
+            repo.upsert_many(to_insert)
+            if repaired:
+                self.progress.emit(f"已為 {repaired} 則既有報紙新聞補上全文連結（未新增重複列）")
             self.progress.emit("匯入完成")
             self.finished_ok.emit(result)
         except Exception as e:

@@ -121,6 +121,47 @@ def test_site_selector_defaults_merged_into_saved_settings(tmp_db_path):
     assert loaded.scraping.site_selectors["setn.com"] == "#Content1"   # 使用者值不被覆蓋
 
 
+def test_reimport_repairs_missing_urls_without_duplicates(news_repo):
+    """V4.4.1 之前匯入的報紙新聞沒有連結（url 空、狀態「略過」）。重新匯入
+    同一封報告時：既有列補上連結並解除略過（人工留用成果保留），不插入重複列；
+    真正的新新聞照常新增。"""
+    from app.services.gmail.gmail_report_parser import repair_newspaper_rows
+    old_row = NewsItem(row_id="old1", title="與警員口角 小隊長拍槍套涉恐嚇",
+                        source="聯合報", published_at="2026-07-13",
+                        body_source=NEWSPAPER_BODY_SOURCE, body_fetch_status="略過",
+                        retained=False, retention_status="人工不留用",
+                        retention_judged_by="human")
+    news_repo.upsert_one(old_row)
+
+    reimported = [
+        NewsItem(row_id="new1", title="與警員口角 小隊長拍槍套涉恐嚇",
+                  source="聯合報", published_at="2026-07-13", url=_XKM_URL,
+                  body_source=NEWSPAPER_BODY_SOURCE, body_fetch_status="未抓取"),
+        NewsItem(row_id="new2", title="另一則新的報紙新聞",
+                  source="中國時報", published_at="2026-07-13", url=_XKM_URL,
+                  body_source=NEWSPAPER_BODY_SOURCE, body_fetch_status="未抓取"),
+    ]
+    to_insert, repaired = repair_newspaper_rows(news_repo, reimported)
+
+    assert repaired == 1
+    assert [it.row_id for it in to_insert] == ["new2"]   # 既有列不重複插入
+    fixed = news_repo.get("old1")
+    assert fixed.url == _XKM_URL
+    assert fixed.body_fetch_status == "未抓取"            # 解除「略過」，可進抓取
+    assert fixed.retention_judged_by == "human"           # 人工判斷完全保留
+    assert fixed.retention_status == "人工不留用"
+
+
+def test_repair_is_noop_for_web_news(news_repo):
+    """網路新聞監測報告不受修補邏輯影響（原樣插入）"""
+    from app.services.gmail.gmail_report_parser import repair_newspaper_rows
+    web_items = [NewsItem(row_id="w1", title="網路新聞", source="自由時報",
+                           published_at="2026-07-13", url="https://example.com/1",
+                           body_source="Gmail正文")]
+    to_insert, repaired = repair_newspaper_rows(news_repo, web_items)
+    assert repaired == 0 and to_insert == web_items
+
+
 def test_newspaper_items_without_body_are_clusterable_by_title():
     """報紙新聞抓取前（或抓取失敗）沒有正文，split_insufficient_body 應放行
     以標題參與分群，不可落入「正文不足待人工確認」"""

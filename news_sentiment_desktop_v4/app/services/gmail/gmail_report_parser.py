@@ -185,6 +185,45 @@ def _newspaper_articles_to_items(articles: List[Dict[str, Any]],
     return items
 
 
+def repair_newspaper_rows(news_repo, items: List[NewsItem]):
+    """重新匯入同一封報紙監測報告時的修補與去重：
+
+    V4.4.1 之前匯入的報紙新聞沒有全文連結（url 為空、抓取狀態「略過」），
+    正文抓取會照設計跳過它們。使用者重新匯入同一封信時，不應插入 49 則重複列，
+    而是把既有列補上 XKM 全文連結（留用判斷、議題歸屬等人工成果完全保留），
+    讓它們能進入正文抓取。
+
+    比對鍵：標題＋監測日期＋媒體名稱（報紙報告內此組合唯一）。
+    回傳（仍需新增的項目清單, 修補連結筆數）。"""
+    if not any(it.body_source == NEWSPAPER_BODY_SOURCE for it in items):
+        return items, 0
+    existing_index = {}
+    for ex in news_repo.list_all():
+        if ex.body_source == NEWSPAPER_BODY_SOURCE:
+            existing_index.setdefault((ex.title, ex.published_at, ex.source), ex)
+
+    to_insert: List[NewsItem] = []
+    repaired = 0
+    for it in items:
+        if it.body_source != NEWSPAPER_BODY_SOURCE:
+            to_insert.append(it)
+            continue
+        ex = existing_index.get((it.title, it.published_at, it.source))
+        if ex is None:
+            to_insert.append(it)
+            continue
+        # 同一則報紙新聞已存在：不重複插入；舊列缺連結而這次解析到了 → 補上
+        if it.url and not ex.url:
+            fields = {"url": it.url, "body_fetch_detail": "重新匯入補上全文連結"}
+            if not ex.body_text:
+                fields["body_fetch_status"] = "未抓取"   # 解除「略過」，讓抓取階段接手
+            news_repo.update_fields(ex.row_id, fields)
+            repaired += 1
+    if repaired:
+        logger.info(f"重新匯入報紙監測報告：修補 {repaired} 則既有新聞的全文連結（未新增重複列）")
+    return to_insert, repaired
+
+
 def parse_report_html(html: str, import_batch_id: str = "") -> List[NewsItem]:
     try:
         from bs4 import BeautifulSoup
