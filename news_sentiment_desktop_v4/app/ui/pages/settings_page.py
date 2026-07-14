@@ -296,7 +296,20 @@ class SettingsPage(QWidget):
             if combo:
                 m["model_id"] = combo.currentText()
         self.ctx.save_settings()
-        QMessageBox.information(self, "已儲存", "任務模型設定已儲存")
+        msg = "任務模型設定已儲存"
+        # 常見誤解：把任務模型改成 gpt-* 就以為切到 ChatGPT 了——實際走哪家
+        # 由「AI 供應商」決定，跨家的模型 ID 會被自動改回該供應商的預設模型。
+        provider = self.ctx.settings.api.provider
+        model_ids = [m.get("model_id", "") for m in self.ctx.settings.task_models]
+        if provider == "anthropic" and any(mid.startswith("gpt") for mid in model_ids):
+            msg += ("\n\n⚠ 注意：目前 AI 供應商是 Anthropic（Claude），"
+                    "設為 gpt-* 的任務仍會自動改用預設 Claude 模型執行。\n"
+                    "要真正改用 ChatGPT，請到「AI 供應商 / API」分頁把「使用供應商」"
+                    "切換為 OpenAI（ChatGPT）並按「儲存 API 設定」。")
+        elif provider == "openai" and any(mid.startswith("claude") for mid in model_ids):
+            msg += ("\n\n提示：目前供應商是 OpenAI（ChatGPT），"
+                    "設為 claude-* 的任務會自動改用「OpenAI 預設模型」執行。")
+        QMessageBox.information(self, "已儲存", msg)
 
     # ---------- Prompt 編輯器（V4.2.1 全面升級） ----------
     # 任務 → 儲存後需重跑的步驟（提示用）
