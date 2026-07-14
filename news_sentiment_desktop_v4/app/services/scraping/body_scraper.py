@@ -206,7 +206,12 @@ class BodyScraper:
                 if idx != -1:
                     body = body[:idx]
             body = normalize_whitespace(body)
-            return body if word_count_cjk_aware(body) >= 50 else ""
+            # 門檻 50 → 20 字（V4.5.3）：站點 selector 是人工確認過的主文容器，
+            # 過高的門檻會把「照片式短訊」剪報（例如報紙圖說新聞，常只有三四十字）
+            # 誤判成未命中而落入一般抓取（在剪報站版型上必然失敗）。
+            # 20 字以下多半是純圖片剪報，無文字可抓，仍回空字串交由呼叫端回報失敗。
+            # 抓回的短正文（<80 字）會被既有品質檢查標「可疑」，不進分群/綜整。
+            return body if word_count_cjk_aware(body) >= 20 else ""
         except Exception:
             return ""
 
