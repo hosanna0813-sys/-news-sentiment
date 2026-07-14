@@ -76,12 +76,12 @@ def save_api_key(api_key: str) -> None:
 
 
 def load_api_key() -> Optional[str]:
-    # 網頁版部署在雲端時，API Key 由平台環境變數注入（例如 Render 的
-    # Dashboard 環境變數），優先於 keyring/開發用 fallback；桌面版沒有設定
-    # 這個環境變數，行為不變。
-    env_key = os.environ.get("ANTHROPIC_API_KEY")
-    if env_key:
-        return env_key
+    # 讀取優先序（V4.5.5 調整）：keyring（設定頁儲存的）→ 環境變數 → 開發用 fallback。
+    # 原本環境變數優先（給雲端網頁版用：Render 由平台環境變數注入），但在桌面版
+    # 造成陷阱——使用者電腦上若殘留舊的 ANTHROPIC_API_KEY 環境變數（例如跑過
+    # 基準測試腳本時設定的），設定頁存的新 key 會被舊環境變數蓋住且毫無提示。
+    # 改為 keyring 優先：雲端容器沒有 keyring backend，仍會自然落到環境變數，
+    # 網頁版部署行為不變。
     kr = _try_keyring()
     if kr is not None:
         try:
@@ -90,6 +90,9 @@ def load_api_key() -> Optional[str]:
                 return val
         except Exception as e:
             logger.warning(f"keyring 讀取失敗: {e}")
+    env_key = os.environ.get("ANTHROPIC_API_KEY")
+    if env_key:
+        return env_key
     if sys.platform != "win32":
         p = _dev_fallback_path()
         if p.exists():
@@ -145,10 +148,9 @@ def save_openai_api_key(api_key: str) -> None:
 
 
 def load_openai_api_key() -> Optional[str]:
-    # 與 load_api_key 相同：網頁版雲端部署時由平台環境變數注入，優先於 keyring
-    env_key = os.environ.get("OPENAI_API_KEY")
-    if env_key:
-        return env_key
+    # 與 load_api_key 相同的優先序（V4.5.5）：keyring → 環境變數 → 開發用 fallback。
+    # 使用者實際踩到過這個陷阱：跑基準測試時設定的舊 OPENAI_API_KEY 環境變數，
+    # 把設定頁新存的 key 蓋住，畫面看不出任何異狀。
     kr = _try_keyring()
     if kr is not None:
         try:
@@ -157,6 +159,9 @@ def load_openai_api_key() -> Optional[str]:
                 return val
         except Exception as e:
             logger.warning(f"keyring 讀取失敗: {e}")
+    env_key = os.environ.get("OPENAI_API_KEY")
+    if env_key:
+        return env_key
     if sys.platform != "win32":
         p = _dev_fallback_path_openai()
         if p.exists():
