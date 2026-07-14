@@ -36,6 +36,16 @@ def test_settings_saved_key_beats_stale_env_var(fake_keyring, monkeypatch):
     assert sks.load_api_key() == "sk-ant-new"
 
 
+def test_mask_api_key_capped_at_8_stars():
+    """遮罩星號固定 8 顆：OpenAI 的 key 長達 160+ 字元，「幾個字元就幾顆星」
+    會把工具列/設定頁撐到視窗變形（使用者回報），星號數量也洩漏金鑰長度"""
+    from app.utils.secure_key_store import mask_api_key
+    long_key = "sk-proj-" + "x" * 150 + "hhAA"
+    assert mask_api_key(long_key) == "********hhAA"
+    assert mask_api_key(None) == "（未設定）"
+    assert mask_api_key("abc") == "***"
+
+
 def test_env_var_still_used_when_keyring_empty(fake_keyring, monkeypatch):
     """雲端部署情境：keyring 沒有存 key（容器沒 backend／沒存過）→ 落到環境變數"""
     from app.utils import secure_key_store as sks

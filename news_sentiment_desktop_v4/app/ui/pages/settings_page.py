@@ -127,6 +127,7 @@ class SettingsPage(QWidget):
         layout.addWidget(key_group)
 
         self.key_status_label = QLabel("")
+        self.key_status_label.setWordWrap(True)
         layout.addWidget(self.key_status_label)
 
         api_group = QGroupBox("API 呼叫設定")
@@ -363,6 +364,7 @@ class SettingsPage(QWidget):
         editor_layout.addWidget(self.tool_schema_edit, 2)
 
         self.prompt_version_label = QLabel("")
+        self.prompt_version_label.setWordWrap(True)
         editor_layout.addWidget(self.prompt_version_label)
         hint = QLabel("⚠ 儲存或切換版本後，需重跑對應步驟才會生效（例如綜整 Prompt → 重跑步驟 6）")
         hint.setWordWrap(True)
@@ -626,6 +628,7 @@ class SettingsPage(QWidget):
         conn_form.addRow("Client Secret：", self.gmail_client_secret_edit)
 
         self.gmail_status_label = QLabel(self._gmail_status_text())
+        self.gmail_status_label.setWordWrap(True)
         conn_form.addRow("連接狀態：", self.gmail_status_label)
 
         btn_row = QHBoxLayout()

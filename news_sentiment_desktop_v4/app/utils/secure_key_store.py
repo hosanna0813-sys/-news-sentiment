@@ -117,12 +117,14 @@ def clear_api_key() -> None:
 
 
 def mask_api_key(api_key: Optional[str]) -> str:
-    """介面僅顯示遮罩與末四碼"""
+    """介面僅顯示遮罩與末四碼。星號固定 8 顆（V4.5.5）：原本「幾個字元就幾顆星」，
+    OpenAI 的 key 長達 160+ 字元，遮罩會把工具列/設定頁撐到視窗變形，
+    而且星號數量本身也洩漏金鑰長度。"""
     if not api_key:
         return "（未設定）"
     if len(api_key) <= 4:
         return "*" * len(api_key)
-    return "*" * (len(api_key) - 4) + api_key[-4:]
+    return "********" + api_key[-4:]
 
 
 def _dev_fallback_path_openai() -> Path:

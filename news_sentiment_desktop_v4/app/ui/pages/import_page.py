@@ -52,6 +52,7 @@ class ImportPage(QWidget):
         layout.addWidget(self.progress_bar)
 
         self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
         summary_group = QGroupBox("匯入結果摘要")

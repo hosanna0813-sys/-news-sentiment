@@ -56,6 +56,7 @@ class ExportPage(QWidget):
         root.addWidget(btn_simple)
 
         self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
         root.addStretch()
 

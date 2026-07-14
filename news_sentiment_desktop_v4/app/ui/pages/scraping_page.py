@@ -62,6 +62,7 @@ class ScrapingPage(QWidget):
         self.progress_bar.setVisible(False)
         root.addWidget(self.progress_bar)
         self.progress_label = QLabel("")
+        self.progress_label.setWordWrap(True)
         root.addWidget(self.progress_label)
 
         self.table = QTableWidget(0, 4)
@@ -76,6 +77,7 @@ class ScrapingPage(QWidget):
             ["站點", "成功率", "成功", "失敗", "略過", "平均耗時(秒)", "最後成功時間"])
         self.stats_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.alert_label = QLabel("")
+        self.alert_label.setWordWrap(True)
         self.alert_label.setObjectName("alertLabel")
         self.alert_label.setWordWrap(True)
 

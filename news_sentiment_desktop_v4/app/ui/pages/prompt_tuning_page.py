@@ -62,6 +62,7 @@ class PromptTuningPage(QWidget):
         root.addLayout(toolbar)
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
+        self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
 
         splitter = QSplitter(Qt.Horizontal)

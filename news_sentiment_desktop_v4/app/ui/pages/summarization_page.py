@@ -45,6 +45,7 @@ class SummarizationPage(QWidget):
         self.progress_bar.setVisible(False)
         root.addWidget(self.progress_bar)
         self.progress_label = QLabel("")
+        self.progress_label.setWordWrap(True)
         root.addWidget(self.progress_label)
 
         splitter = QSplitter(Qt.Horizontal)

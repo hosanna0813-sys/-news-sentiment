@@ -149,8 +149,11 @@ schemas) — no business logic is duplicated. What differs, and why:
 - **Data directory**: `app/utils/paths.py::get_app_data_dir()` checks
   `NEWS_SENTIMENT_DATA_DIR` first (for a mounted cloud disk) before falling back to
   the existing Windows APPDATA / `~/.news_sentiment_desktop_v4` logic.
-- **Secrets**: `secure_key_store.load_api_key()` checks the `ANTHROPIC_API_KEY` env
-  var before falling back to keyring; Gmail OAuth client id/secret and a shared
+- **Secrets**: `secure_key_store.load_api_key()` prefers keyring (the key saved in
+  the settings UI) and falls back to the `ANTHROPIC_API_KEY` env var — cloud
+  containers have no keyring backend, so platform-injected env vars still work,
+  while a stale local env var can no longer shadow a UI-saved key; Gmail OAuth
+  client id/secret and a shared
   login password (`app/web/auth.py`, no per-user accounts) come from env vars too
   (`GMAIL_OAUTH_CLIENT_ID`/`_SECRET`, `WEB_SHARED_PASSWORD`).
 - **One-click pipeline** (`app/web/routes/pipeline.py`): chains import → scrape →
