@@ -252,6 +252,9 @@ class ModelGateway:
                     # 帳務問題翻成看得懂的行動指引（原文英文，一般使用者不知如何處理）
                     msg += "\n→ Anthropic 帳戶餘額不足：請至 console.anthropic.com 儲值，" \
                            "或到「系統設定 → AI 供應商」切換為 OpenAI 後重跑"
+                elif "invalid x-api-key" in msg.lower() or "authentication_error" in msg.lower():
+                    msg += "\n→ Anthropic API Key 無效：請至 console.anthropic.com 重新產生，" \
+                           "在「系統設定 → AI 供應商 / API」更新後按「測試連線」驗證"
                 last_error = GatewayError(err_type, msg, raw=e)
                 logger.warning(f"[{task}] {log_label}第 {attempt} 次呼叫失敗 ({err_type}): {e}")
 

@@ -282,6 +282,9 @@ class OpenAIGateway:
                 if "insufficient_quota" in msg or "exceeded your current quota" in msg:
                     msg += "\n→ OpenAI 帳戶額度不足：請至 platform.openai.com 儲值，" \
                            "或到「系統設定 → AI 供應商」切換為 Anthropic 後重跑"
+                elif "invalid_api_key" in msg or "Incorrect API key" in msg:
+                    msg += "\n→ OpenAI API Key 無效：請至 platform.openai.com/api-keys 重新產生，" \
+                           "在「系統設定 → AI 供應商 / API」更新後按「測試連線」驗證"
                 last_error = GatewayError(err_type, msg, raw=e)
                 logger.warning(f"[{task}] 第 {attempt} 次呼叫失敗 ({err_type}): {e}")
 
