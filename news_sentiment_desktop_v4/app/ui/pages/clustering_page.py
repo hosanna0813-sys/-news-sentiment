@@ -82,7 +82,11 @@ class ClusteringPage(QWidget):
         self.btn_start.setEnabled(True)
         self.btn_cancel.setEnabled(False)
         self.progress_bar.setVisible(False)
-        self.progress_label.setText(f"分群完成，共產生 {topic_count} 個議題")
+        msg = f"分群完成，共產生 {topic_count} 個議題"
+        failed = getattr(self._worker, "failed_buckets", 0)
+        if failed:
+            msg += f"（注意：{failed} 個分桶的 AI 呼叫失敗被略過，重新執行分群可補跑）"
+        self.progress_label.setText(msg)
         self.refresh_topics()
 
     def _on_finished_error(self, message: str):

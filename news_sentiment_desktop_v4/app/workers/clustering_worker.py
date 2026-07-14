@@ -102,8 +102,10 @@ class ClusteringWorker(QThread):
         self.prompt_repo = PromptRepository(self.db_path)
         if self.feedback_repo is not None:
             self.feedback_repo = FeedbackRepository(self.db_path)
+        self.failed_buckets = 0   # 供頁面顯示部分失敗提示
         try:
             all_items = self.news_repo.list_retained_with_body()
+            had_candidates = bool(all_items)
 
             existing_topics: List[Dict[str, Any]] = []
             existing_topic_ids: set = set()
@@ -126,7 +128,18 @@ class ClusteringWorker(QThread):
             ])
 
             if not clusterable:
-                self.finished_ok.emit(len(existing_topic_ids))
+                # 「完成，0 個議題」會讓使用者以為 AI 壞掉——把沒東西可分的原因說清楚
+                if insufficient:
+                    self.finished_error.emit(
+                        f"沒有可分群的新聞：{len(insufficient)} 則留用新聞的正文不足或可疑，"
+                        "已標記「正文不足待人工確認」。請先到步驟 3 抓取正文，"
+                        "或到步驟 5 人工補正文後再分群")
+                elif self.incremental and had_candidates:
+                    self.finished_ok.emit(len(existing_topic_ids))   # 全部已歸入議題，正常
+                else:
+                    self.finished_error.emit(
+                        "沒有可分群的新聞：目前沒有「已留用且有正文」的新聞。"
+                        "請先完成步驟 2（確認留用）與步驟 3（抓取正文）")
                 return
 
             # 設定頁「議題／關鍵字彙整表」接在 few-shot 範例前，供模型參考
@@ -157,6 +170,8 @@ class ClusteringWorker(QThread):
                     )
                 except GatewayError as e:
                     logger.warning(f"分桶 {idx} 分群失敗，暫緩處理: {e.message}")
+                    self.failed_buckets += 1
+                    last_bucket_error = e.message
                     continue
 
                 for t in topics:
@@ -170,6 +185,13 @@ class ClusteringWorker(QThread):
                         t["sample_titles"] = [title_lookup.get(rid, "")
                                                 for rid in t.get("member_row_ids", [])[:5]]
                         candidate_topics.append(t)
+
+            # 整批分桶全軍覆沒：明確回報失敗原因，不再默默顯示「完成，0 個議題」
+            if self.failed_buckets == len(buckets) and not candidate_topics and not assigned_to_existing:
+                self.finished_error.emit(
+                    f"全部 {len(buckets)} 個分桶的 AI 呼叫都失敗，最後錯誤：{last_bucket_error}。"
+                    "請查看 log 排除問題後重新執行分群")
+                return
 
             # ---- 寫回：歸入既有議題的新聞 ----
             existing_updates = []
