@@ -254,7 +254,11 @@ class RetentionPage(QWidget):
         self.lbl_p_channel.setText(item.channel)
         if item.has_body:
             self.lbl_summary_title.setText("正文：")
-            self.txt_summary.setPlainText(item.body_text)
+            # 顯示層清理（不動資料庫原文）：來源網頁/剪報常把同一段文字拆成
+            # 好幾行，直接顯示會一截一截的——攤平句中斷行、保留段落分隔。
+            # 網頁版預覽已用同一函式處理，桌面版補齊。
+            from app.utils.text_utils import clean_body_for_preview
+            self.txt_summary.setPlainText(clean_body_for_preview(item.body_text))
         elif item.summary:
             self.lbl_summary_title.setText("Excel 摘要：")
             self.txt_summary.setPlainText(item.summary)

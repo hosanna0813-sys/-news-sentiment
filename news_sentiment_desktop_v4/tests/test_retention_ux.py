@@ -95,6 +95,25 @@ def test_space_toggle_applies_focus_rows_new_value_to_selection(retention_page):
     assert not page.model.item_at(2).retained
 
 
+def test_preview_flattens_stray_line_breaks_in_body(retention_page):
+    """正文預覽套用顯示層清理（clean_body_for_preview）：句中零星斷行攤平、
+    段落分隔（連續兩個換行）保留——與網頁版行為一致（使用者回報桌面版
+    預覽有奇怪的換行）"""
+    page, ctx = retention_page
+    body = "這是第一段的前半，\n被切成好幾行的\n同一句話。\n\n這是第二段。" + "內容" * 20
+    ctx.news_repo.upsert_one(NewsItem(
+        row_id="b1", title="有正文的新聞", source="來源", published_at="2026-07-14",
+        body_text=body, body_word_count=100, body_fetch_status="成功", retained=True))
+    page.reload_data()
+    row = next(r for r in range(page.model.rowCount()) if page.model.item_at(r).row_id == "b1")
+    page.table_view.setCurrentIndex(page.model.index(row, 1))
+
+    shown = page.txt_summary.toPlainText()
+    assert "這是第一段的前半， 被切成好幾行的 同一句話。" in shown   # 句中斷行攤平
+    assert "\n\n這是第二段。" in shown                                # 段落分隔保留
+    assert ctx.news_repo.get("b1").body_text == body                  # 資料庫原文不動
+
+
 def test_preview_explains_missing_body_instead_of_blank(retention_page):
     """報紙新聞抓取前沒正文也沒摘要——預覽面板要說明狀態與下一步，
     不能留一個看起來像壞掉的空白框（使用者回報）"""
