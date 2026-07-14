@@ -247,7 +247,12 @@ class ModelGateway:
                 logger.warning(f"[{task}] {log_label}第 {attempt} 次呼叫失敗 ({ge.error_type}): {ge.message}")
             except Exception as e:
                 err_type = _classify_exception(e)
-                last_error = GatewayError(err_type, str(e), raw=e)
+                msg = str(e)
+                if "credit balance" in msg.lower():
+                    # 帳務問題翻成看得懂的行動指引（原文英文，一般使用者不知如何處理）
+                    msg += "\n→ Anthropic 帳戶餘額不足：請至 console.anthropic.com 儲值，" \
+                           "或到「系統設定 → AI 供應商」切換為 OpenAI 後重跑"
+                last_error = GatewayError(err_type, msg, raw=e)
                 logger.warning(f"[{task}] {log_label}第 {attempt} 次呼叫失敗 ({err_type}): {e}")
 
             if last_error.error_type in (GatewayErrorType.AUTH, GatewayErrorType.INVALID_REQUEST):
