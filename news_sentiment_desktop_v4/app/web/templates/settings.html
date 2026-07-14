@@ -62,8 +62,9 @@
       <input type="text" name="sender_email_filter" value="{{ gmail.sender_email_filter }}" placeholder="例：xkm_cs@xkd.com.tw">
     </label>
     <label>主旨關鍵字（選填）<br>
-      <input type="text" name="subject_keyword" value="{{ gmail.subject_keyword }}" placeholder="例：新聞監測報告">
+      <input type="text" name="subject_keyword" value="{{ gmail.subject_keyword }}" placeholder="例：網路新聞監測, 報紙新聞監測">
     </label>
+    <p class="muted">可用逗號填多組關鍵字（任一符合即匯入）——同時訂閱網路與報紙監測報告時兩封一起撈，版型會自動判別。</p>
 
     <h3>議題分群粒度</h3>
     <p class="muted">控制 AI 分議題的鬆緊：覺得議題被併得太大選「細」，覺得議題被拆得太碎選「粗」。</p>

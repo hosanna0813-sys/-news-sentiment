@@ -31,7 +31,15 @@ def _build_query(sender: str, subject_keyword: str,
     if sender:
         parts.append(f"from:{sender}")
     if subject_keyword:
-        parts.append(f'subject:"{subject_keyword}"')
+        # 多組主旨關鍵字（V4.5.3）：以逗號（半形/全形）分隔，任一符合即匯入。
+        # 使用者同時訂閱「網路新聞監測」與「報紙新聞監測」兩種報告時，
+        # 不必每次匯入前切換關鍵字——兩封一起撈，版型由解析器自動判別。
+        import re as _re
+        keywords = [k.strip() for k in _re.split(r"[,，]", subject_keyword) if k.strip()]
+        if len(keywords) == 1:
+            parts.append(f'subject:"{keywords[0]}"')
+        elif keywords:
+            parts.append("(" + " OR ".join(f'subject:"{k}"' for k in keywords) + ")")
     parts.append(f"after:{after_date.strftime('%Y/%m/%d')}")
     parts.append(f"before:{before_date.strftime('%Y/%m/%d')}")
     return " ".join(parts)

@@ -632,10 +632,15 @@ class SettingsPage(QWidget):
         self.gmail_sender_edit = QLineEdit(g.sender_email_filter)
         self.gmail_sender_edit.setPlaceholderText("例：xkm_cs@xkd.com.tw")
         self.gmail_subject_edit = QLineEdit(g.subject_keyword)
-        self.gmail_subject_edit.setPlaceholderText("選填，例：內政部新聞專屬監測報告")
+        self.gmail_subject_edit.setPlaceholderText("選填，例：網路新聞監測, 報紙新聞監測")
 
         filter_form.addRow("寄件者信箱：", self.gmail_sender_edit)
         filter_form.addRow("主旨關鍵字：", self.gmail_subject_edit)
+        subject_hint = QLabel("可用逗號填多組關鍵字（任一符合即匯入）——同時訂閱網路與報紙"
+                               "監測報告時兩封一起撈，不必每次切換；版型會自動判別。")
+        subject_hint.setObjectName("hintLabel")
+        subject_hint.setWordWrap(True)
+        filter_form.addRow("", subject_hint)
         filter_form.addRow(QLabel("擷取的起訖日期時間每次匯入時另外於對話框指定，不在此設定"))
 
         btn_save_gmail = QPushButton("儲存 Gmail 設定")
