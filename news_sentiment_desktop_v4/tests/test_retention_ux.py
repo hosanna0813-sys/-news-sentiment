@@ -95,6 +95,25 @@ def test_space_toggle_applies_focus_rows_new_value_to_selection(retention_page):
     assert not page.model.item_at(2).retained
 
 
+def test_preview_explains_missing_body_instead_of_blank(retention_page):
+    """報紙新聞抓取前沒正文也沒摘要——預覽面板要說明狀態與下一步，
+    不能留一個看起來像壞掉的空白框（使用者回報）"""
+    page, ctx = retention_page
+    from app.services.gmail.gmail_report_parser import NEWSPAPER_BODY_SOURCE
+    ctx.news_repo.upsert_one(NewsItem(
+        row_id="np1", title="報紙新聞", source="中國時報", published_at="2026-07-14",
+        url="http://rmbjbtw.rmb.com.tw/x", body_source=NEWSPAPER_BODY_SOURCE,
+        body_fetch_status="未抓取", retained=True))
+    page.reload_data()
+    row = next(r for r in range(page.model.rowCount()) if page.model.item_at(r).row_id == "np1")
+    page.table_view.setCurrentIndex(page.model.index(row, 1))
+
+    assert "尚未取得正文" in page.txt_summary.toPlainText()
+    assert "抓取正文" in page.txt_summary.toPlainText()
+    # 已補上連結的報紙新聞，不再顯示誤導的「無原文連結」
+    assert "有剪報全文連結" in page.lbl_body_status.text()
+
+
 def test_checkbox_still_rendered_without_usercheckable_flag(retention_page):
     """flags 拿掉 ItemIsUserCheckable 後，CheckStateRole 仍要有值（勾選框照常渲染），
     且整格點擊路徑（toggle_retained）取代原生小方塊互動"""

@@ -255,10 +255,27 @@ class RetentionPage(QWidget):
         if item.has_body:
             self.lbl_summary_title.setText("正文：")
             self.txt_summary.setPlainText(item.body_text)
-        else:
+        elif item.summary:
             self.lbl_summary_title.setText("Excel 摘要：")
             self.txt_summary.setPlainText(item.summary)
-        self.lbl_body_status.setText(f"{item.body_fetch_status}（{item.body_source}）")
+        else:
+            # 沒正文也沒摘要（報紙監測新聞抓取前的常態）：空白框會讓人誤會壞掉，
+            # 改成說明目前狀態與下一步
+            self.lbl_summary_title.setText("正文／摘要：")
+            if item.url:
+                self.txt_summary.setPlainText(
+                    "（尚未取得正文）\n\n"
+                    "此新聞有全文連結：勾選留用後，到「步驟 3：抓取正文」執行抓取，"
+                    "正文就會顯示在這裡（抓取只處理已留用的新聞）。\n"
+                    "也可以按上方「開啟原始新聞網址」直接查看原文。")
+            else:
+                self.txt_summary.setPlainText("（此新聞沒有可用的正文、摘要或原文連結）")
+        body_source_label = item.body_source
+        # 報紙監測的內部標記字樣是「無原文連結」；重新匯入補上連結後照原字樣顯示
+        # 會誤導使用者，依實際有無連結調整顯示（僅顯示層，內部標記不動）
+        if body_source_label == "報紙監測（無原文連結）" and item.url:
+            body_source_label = "報紙監測（有剪報全文連結）"
+        self.lbl_body_status.setText(f"{item.body_fetch_status}（{body_source_label}）")
         stars = item.priority_stars or 0
         self.lbl_priority.setText("★" * stars + "☆" * (5 - stars) if stars else "（尚無 AI 判斷）")
         self.lbl_should_respond.setText("是" if item.should_respond else "否")
