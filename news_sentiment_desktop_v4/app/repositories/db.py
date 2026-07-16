@@ -25,7 +25,7 @@ logger = get_logger("db")
 
 _local = threading.local()
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS topics (
     has_identifiable_stance INTEGER DEFAULT 0,
     summarized_at REAL,
     summarized_by_model TEXT,
+    display_order INTEGER DEFAULT 0,
     created_at REAL,
     updated_at REAL
 );
@@ -305,6 +306,12 @@ def _run_migrations(conn: sqlite3.Connection, from_version: int, to_version: int
     if from_version < 3:
         _add_columns_if_missing(conn, "news", [
             ("is_moi_core_business", "INTEGER DEFAULT 0"),
+        ])
+
+    if from_version < 4:
+        # V4.6.0：議題可人工拖曳排序（0=尚未手動排序，依 created_at 排在最後）
+        _add_columns_if_missing(conn, "topics", [
+            ("display_order", "INTEGER DEFAULT 0"),
         ])
 
     conn.execute("UPDATE schema_version SET version=?", (to_version,))

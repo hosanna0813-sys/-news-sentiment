@@ -44,8 +44,21 @@ class TopicRepository:
         return Topic.from_row(dict(row)) if row else None
 
     def list_active(self) -> List[Topic]:
-        cur = self.conn.execute("SELECT * FROM topics WHERE status='active' ORDER BY created_at")
+        # 排序：人工排過序的（display_order 1..N）在前、依序排列；
+        # 尚未排序的（0，例如排序後才新增的議題）依建立時間附在後面
+        cur = self.conn.execute(
+            "SELECT * FROM topics WHERE status='active' "
+            "ORDER BY CASE WHEN display_order > 0 THEN 0 ELSE 1 END, display_order, created_at")
         return [Topic.from_row(dict(r)) for r in cur.fetchall()]
+
+    def save_display_order(self, ordered_topic_ids: List[str]) -> None:
+        """把使用者拖曳後的順序（清單由上到下）寫回：依序賦予 1..N。
+        Word 匯出的議題編號、各頁議題清單都會跟著這個順序。"""
+        with self.conn:
+            for order, topic_id in enumerate(ordered_topic_ids, start=1):
+                self.conn.execute(
+                    "UPDATE topics SET display_order=?, updated_at=? WHERE topic_id=?",
+                    (order, time.time(), topic_id))
 
     def delete(self, topic_id: str) -> None:
         with self.conn:

@@ -28,6 +28,10 @@ class Topic:
     summarized_at: Optional[float] = None
     summarized_by_model: str = ""
 
+    # 人工排序（V4.6.0）：0=尚未手動排序（依 created_at 排最後）；
+    # 使用者在議題調整頁拖曳排序後，所有 active 議題被賦予 1..N
+    display_order: int = 0
+
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
 

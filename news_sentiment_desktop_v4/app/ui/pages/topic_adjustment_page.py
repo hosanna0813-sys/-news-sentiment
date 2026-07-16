@@ -27,6 +27,8 @@ from app.services.clustering.clustering_service import assign_news_to_topic, una
 from app.ui.widgets.drop_list_widget import DropListWidget
 
 ROW_ID_ROLE = Qt.UserRole + 1
+TOPIC_ID_ROLE = Qt.UserRole + 2
+TOPIC_NAME_ROLE = Qt.UserRole + 3
 
 
 class TopicAdjustmentPage(QWidget):
@@ -54,15 +56,22 @@ class TopicAdjustmentPage(QWidget):
         left_layout.addWidget(self.unclassified_list)
         splitter.addWidget(left_box)
 
-        # ---- 中：選定議題成員 ----
+        # ---- 中：議題清單（可拖曳排序）＋ 選定議題成員 ----
         mid_box = QWidget()
         mid_layout = QVBoxLayout(mid_box)
-        topic_row = QHBoxLayout()
-        topic_row.addWidget(QLabel("目前議題："))
-        self.topic_combo = QComboBox()
-        self.topic_combo.currentIndexChanged.connect(self._on_topic_changed)
-        topic_row.addWidget(self.topic_combo, 1)
-        mid_layout.addLayout(topic_row)
+        mid_layout.addWidget(QLabel("議題清單（點選檢視成員）："))
+        order_hint = QLabel("上下拖曳可調整議題順序——Word 匯出的「議題1、議題2…」編號會照這個順序。")
+        order_hint.setObjectName("hintLabel")
+        order_hint.setWordWrap(True)
+        mid_layout.addWidget(order_hint)
+        self.topic_list = QListWidget()
+        self.topic_list.setDragDropMode(QAbstractItemView.InternalMove)
+        self.topic_list.setDefaultDropAction(Qt.MoveAction)
+        self.topic_list.currentItemChanged.connect(lambda *_: self._refresh_members())
+        # 拖曳完成（列被移動）後把新順序寫回資料庫
+        self.topic_list.model().rowsMoved.connect(self._on_topic_order_changed)
+        mid_layout.addWidget(self.topic_list, 1)
+        mid_layout.addWidget(QLabel("目前議題成員："))
         from PySide6.QtWidgets import QCheckBox
         self.chk_low_conf_only = QCheckBox("只顯示低信心新聞（AI 不確定歸屬，建議優先確認）")
         self.chk_low_conf_only.stateChanged.connect(lambda *_: self._refresh_members())
@@ -72,7 +81,7 @@ class TopicAdjustmentPage(QWidget):
         self.member_list = DropListWidget(row_id_role=ROW_ID_ROLE)
         self.member_list.itemSelectionChanged.connect(self._on_item_selected_preview)
         self.member_list.items_dropped.connect(self._on_dropped_to_member)
-        mid_layout.addWidget(self.member_list)
+        mid_layout.addWidget(self.member_list, 2)
         splitter.addWidget(mid_box)
 
         # ---- 右：操作 + 預覽 ----
@@ -135,24 +144,45 @@ class TopicAdjustmentPage(QWidget):
 
     # ---------- 資料載入 ----------
     def refresh_all(self):
-        self._refresh_topic_combo()
+        self._refresh_topic_list()
         self._refresh_unclassified()
         self._refresh_members()
 
-    def _refresh_topic_combo(self):
-        current = self.topic_combo.currentData()
-        self.topic_combo.blockSignals(True)
-        self.topic_combo.clear()
+    def _refresh_topic_list(self):
+        current = self._current_topic_id()
+        self.topic_list.blockSignals(True)
+        self.topic_list.clear()
         self.merge_target_combo.clear()
-        topics = self.ctx.topic_repo.list_active()
+        topics = self.ctx.topic_repo.list_active()   # 依 display_order（人工排序）排列
         for t in topics:
-            self.topic_combo.addItem(t.topic_name, t.topic_id)
+            count = len(self.ctx.news_repo.list_by_topic(t.topic_id))
+            li = QListWidgetItem(f"{t.topic_name}（{count} 則）")
+            li.setData(TOPIC_ID_ROLE, t.topic_id)
+            li.setData(TOPIC_NAME_ROLE, t.topic_name)
+            self.topic_list.addItem(li)
             self.merge_target_combo.addItem(t.topic_name, t.topic_id)
         if current:
-            idx = self.topic_combo.findData(current)
-            if idx >= 0:
-                self.topic_combo.setCurrentIndex(idx)
-        self.topic_combo.blockSignals(False)
+            for row in range(self.topic_list.count()):
+                if self.topic_list.item(row).data(TOPIC_ID_ROLE) == current:
+                    self.topic_list.setCurrentRow(row)
+                    break
+        elif self.topic_list.count():
+            self.topic_list.setCurrentRow(0)
+        self.topic_list.blockSignals(False)
+
+    def _current_topic_id(self):
+        item = self.topic_list.currentItem()
+        return item.data(TOPIC_ID_ROLE) if item else None
+
+    def _current_topic_name(self) -> str:
+        item = self.topic_list.currentItem()
+        return item.data(TOPIC_NAME_ROLE) if item else ""
+
+    def _on_topic_order_changed(self, *args):
+        """拖曳排序完成：把清單目前的順序（由上到下 = 1..N）寫回資料庫"""
+        ids = [self.topic_list.item(r).data(TOPIC_ID_ROLE)
+               for r in range(self.topic_list.count())]
+        self.ctx.topic_repo.save_display_order(ids)
 
     def _refresh_unclassified(self):
         self.unclassified_list.clear()
@@ -167,7 +197,7 @@ class TopicAdjustmentPage(QWidget):
 
     def _refresh_members(self):
         self.member_list.clear()
-        topic_id = self.topic_combo.currentData()
+        topic_id = self._current_topic_id()
         if not topic_id:
             self.lbl_low_conf_count.setText("")
             return
@@ -195,18 +225,15 @@ class TopicAdjustmentPage(QWidget):
             f"本議題共 {len(items)} 則，其中 {low_conf_count} 則為低信心（標黃）"
             if items else "")
 
-    def _on_topic_changed(self):
-        self._refresh_members()
-
     # ---------- 拖曳持久化（修正原「假拖曳」bug）----------
     def _on_dropped_to_member(self, row_ids: List[str]):
         """新聞被拖入「目前議題成員」清單：寫回 final_topic_id 與 feedback log"""
-        topic_id = self.topic_combo.currentData()
+        topic_id = self._current_topic_id()
         if not topic_id:
             QMessageBox.warning(self, "提示", "目前未選定議題，拖曳無法生效，已還原畫面")
             self.refresh_all()
             return
-        topic_name = self.topic_combo.currentText()
+        topic_name = self._current_topic_name()
         self._assign_news_to_topic(row_ids, topic_id, topic_name, action="human_drag_assign")
 
     def _on_dropped_to_unclassified(self, row_ids: List[str]):
@@ -294,7 +321,7 @@ class TopicAdjustmentPage(QWidget):
         self.refresh_all()
 
     def _on_move_left_to_topic(self):
-        topic_id = self.topic_combo.currentData()
+        topic_id = self._current_topic_id()
         if not topic_id:
             QMessageBox.information(self, "提示", "請先選擇目前議題")
             return
@@ -302,7 +329,7 @@ class TopicAdjustmentPage(QWidget):
         if not row_ids:
             QMessageBox.information(self, "提示", "請先在左側選取新聞")
             return
-        topic_name = self.topic_combo.currentText()
+        topic_name = self._current_topic_name()
         self._assign_news_to_topic(row_ids, topic_id, topic_name, action="human_drag_assign")
         self.refresh_all()
 
@@ -328,10 +355,10 @@ class TopicAdjustmentPage(QWidget):
         self.refresh_all()
 
     def _on_rename_topic(self):
-        topic_id = self.topic_combo.currentData()
+        topic_id = self._current_topic_id()
         if not topic_id:
             return
-        old_name = self.topic_combo.currentText()
+        old_name = self._current_topic_name()
         name, ok = QInputDialog.getText(self, "修改議題名稱", "新名稱：", text=old_name)
         if not ok or not name.strip():
             return
@@ -344,13 +371,13 @@ class TopicAdjustmentPage(QWidget):
         self.refresh_all()
 
     def _on_merge_topic(self):
-        source_id = self.topic_combo.currentData()
+        source_id = self._current_topic_id()
         target_id = self.merge_target_combo.currentData()
         if not source_id or not target_id or source_id == target_id:
             QMessageBox.information(self, "提示", "請選擇兩個不同的議題進行合併")
             return
         target_name = self.merge_target_combo.currentText()
-        source_name = self.topic_combo.currentText()
+        source_name = self._current_topic_name()
         members = self.ctx.news_repo.list_by_topic(source_id)
         self._assign_news_to_topic([it.row_id for it in members], target_id, target_name,
                                      action="human_merge")
