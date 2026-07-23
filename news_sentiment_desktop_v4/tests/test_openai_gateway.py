@@ -169,6 +169,31 @@ def test_truncated_output_retries_with_bigger_budget(fake_openai, monkeypatch):
     assert third_budget == second_budget
 
 
+def test_unknown_model_falls_back_to_default(fake_openai, monkeypatch):
+    """設定頁填錯模型名稱（例如不存在的 gpt-5.5-mini）→ 404 model_not_found。
+    自癒：記入不可用清單、改用預設模型立即重試；後續呼叫直接用預設模型起跳。"""
+    from app.services.ai import openai_gateway as og
+    monkeypatch.setattr(og, "_UNAVAILABLE_MODELS", set())
+
+    def handler(kw):
+        if kw["model"] == "gpt-not-exist":
+            raise Exception("Error code: 404 - {'error': {'message': 'The model `gpt-not-exist` "
+                             "does not exist or you do not have access to it.', "
+                             "'code': 'model_not_found'}}")
+        return _tool_response({"ok": True})
+    fake_openai["handler"] = handler
+    gw = _make_gateway(model_id="gpt-not-exist")
+    result = gw.call_with_tool("t", "s", "u", "tool", {"type": "object"})
+    assert result.data == {"ok": True}
+    assert fake_openai["calls"][0]["model"] == "gpt-not-exist"
+    assert fake_openai["calls"][1]["model"] == "gpt-5.5-default"   # 落回預設模型重試
+
+    # 學到之後：同一個錯誤型號直接解析成預設模型，不再撞 404
+    fake_openai["calls"].clear()
+    gw.call_with_tool("t", "s", "u", "tool", {"type": "object"})
+    assert fake_openai["calls"][0]["model"] == "gpt-5.5-default"
+
+
 def test_retry_on_rate_limit_then_success(fake_openai):
     attempts = {"n": 0}
 

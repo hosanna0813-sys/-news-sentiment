@@ -22,8 +22,9 @@ from app.models.settings import ModelTaskConfig
 from app.workers.gmail_import_worker import GmailAuthWorker
 
 MODEL_CHOICES = ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-4-8"]
-# OpenAI 常用型號（下拉快速選擇用；清單外的新型號仍可直接在欄位輸入）
-OPENAI_MODEL_CHOICES = ["gpt-5.5", "gpt-5.5-mini"]
+# OpenAI 型號（下拉快速選擇用；清單外的新型號仍可直接在欄位輸入）。
+# 只列實際驗證過可用的型號——曾放過猜測的 "gpt-5.5-mini" 造成整批 404
+OPENAI_MODEL_CHOICES = ["gpt-5.5"]
 ALL_MODEL_CHOICES = MODEL_CHOICES + OPENAI_MODEL_CHOICES
 
 

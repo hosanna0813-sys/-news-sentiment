@@ -41,6 +41,9 @@ _NO_TEMPERATURE: set = set()            # 不支援 temperature 的模型
 # 截斷自癒學到的「任務最低輸出額度」（task -> max_tokens），同 model_gateway：
 # 某任務被截斷加大過，同一次執行內後續批次直接以大額度起跳
 _LEARNED_MIN_TOKENS: Dict[str, int] = {}
+# 已確認「此帳戶不可用」的模型 ID（404 model_not_found 學到的）——
+# 後續呼叫直接改用預設模型，不再每批撞一次 404
+_UNAVAILABLE_MODELS: set = set()
 
 _HTTP_STATUS_CLASS = {
     "401": GatewayErrorType.AUTH, "403": GatewayErrorType.AUTH,
@@ -144,8 +147,11 @@ class OpenAIGateway:
         return self._resolve_model(self._task_model_lookup(task))
 
     def _resolve_model(self, cfg: Dict[str, Any]) -> str:
-        """任務設定的模型 ID 若是 claude-* 或空值，自動改用 OpenAI 預設模型"""
+        """任務設定的模型 ID 若是 claude-*、空值、或已確認此帳戶不可用（404 學到的），
+        自動改用 OpenAI 預設模型"""
         model_id = cfg.get("model_id", "") or ""
+        if model_id in _UNAVAILABLE_MODELS:
+            return self.default_model
         if not model_id or model_id.startswith("claude"):
             if model_id and model_id not in self._mapped_models:
                 self._mapped_models.add(model_id)
@@ -279,7 +285,19 @@ class OpenAIGateway:
             except Exception as e:
                 err_type = _classify_openai_exception(e)
                 msg = str(e)
-                if "insufficient_quota" in msg or "exceeded your current quota" in msg:
+                # 模型不存在自癒：設定頁填錯型號（或新型號帳戶尚無權限）時，
+                # 記入不可用清單並改用預設模型立即重試，而不是整批 404 失敗
+                if "model_not_found" in msg or "does not exist or you do not have access" in msg:
+                    _UNAVAILABLE_MODELS.add(model_id)
+                    if model_id != self.default_model:
+                        logger.warning(f"[{task}] 模型 {model_id} 不存在或無權限，"
+                                        f"改用預設模型 {self.default_model} 重試"
+                                        "（請到設定頁修正該任務的模型名稱）")
+                        model_id = self.default_model
+                        continue
+                    msg += "\n→ 此模型不存在或帳戶無權限：請到「系統設定 → 任務模型設定」" \
+                           "確認模型名稱（可用「測試連線」驗證預設模型）"
+                elif "insufficient_quota" in msg or "exceeded your current quota" in msg:
                     msg += "\n→ OpenAI 帳戶額度不足：請至 platform.openai.com 儲值，" \
                            "或到「系統設定 → AI 供應商」切換為 Anthropic 後重跑"
                 elif "invalid_api_key" in msg or "Incorrect API key" in msg:
@@ -342,7 +360,16 @@ class OpenAIGateway:
                 logger.warning(f"[{task}] json_mode 第 {attempt} 次失敗: {ge.message}")
             except Exception as e:
                 err_type = _classify_openai_exception(e)
-                last_error = GatewayError(err_type, str(e), raw=e)
+                msg = str(e)
+                # 模型不存在自癒（同 call_with_tool）
+                if ("model_not_found" in msg or "does not exist or you do not have access" in msg):
+                    _UNAVAILABLE_MODELS.add(model_id)
+                    if model_id != self.default_model:
+                        logger.warning(f"[{task}] json_mode：模型 {model_id} 不存在或無權限，"
+                                        f"改用預設模型 {self.default_model} 重試")
+                        model_id = self.default_model
+                        continue
+                last_error = GatewayError(err_type, msg, raw=e)
                 logger.warning(f"[{task}] json_mode 第 {attempt} 次失敗 ({err_type}): {e}")
             if last_error and last_error.error_type in (
                     GatewayErrorType.AUTH, GatewayErrorType.INVALID_REQUEST):
