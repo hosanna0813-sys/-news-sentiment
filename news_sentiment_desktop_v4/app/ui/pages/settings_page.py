@@ -613,9 +613,46 @@ class SettingsPage(QWidget):
         QMessageBox.information(self, "已儲存", "Word 輸出樣式設定已儲存")
 
     # ---------- Gmail 匯入 ----------
+    _GMAIL_GUIDE_HTML = (
+        "<b>只需設定一次。</b>連接前要先到 Google Cloud Console 申請一組免費的 OAuth 憑證："
+        "<ol style='margin-top:4px'>"
+        "<li>開啟 <a href='https://console.cloud.google.com'>console.cloud.google.com</a>，"
+        "用 Google 帳號登入，上方選單<b>建立新專案</b>（名稱隨意，例如「新聞輿情」）</li>"
+        "<li>左側「API 和服務 → 程式庫」搜尋 <b>Gmail API</b> → 點入按「啟用」</li>"
+        "<li>「API 和服務 → OAuth 同意畫面」：使用者類型選「<b>外部</b>」，應用程式名稱隨意填；"
+        "<b>重要：</b>在「測試使用者」加入<b>收新聞監測信的那個 Gmail 地址</b>"
+        "（沒加的話登入時會被「應用程式未經驗證」擋下）</li>"
+        "<li>「API 和服務 → 憑證 → 建立憑證 → OAuth 用戶端 ID」：應用程式類型選"
+        "「<b>電腦版應用程式</b>」，建立後把 <b>Client ID</b> 與 <b>Client Secret</b> 複製下來</li>"
+        "<li>把兩者貼到下方欄位 → 按「<b>連接 Gmail 帳號</b>」→ 瀏覽器會開啟，"
+        "登入收新聞信的 Gmail → 出現「Google 尚未驗證這個應用程式」時點「<b>繼續</b>」→ 允許唯讀權限</li>"
+        "</ol>"
+        "連接成功後憑證會加密保存（Windows 認證管理員），之後匯入直接用、過期自動更新。"
+        "本程式只申請「唯讀」權限，只能讀信，不能寄信或刪信。")
+
     def _build_gmail_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout(w)
+
+        # 首次設定教學：尚未連接時自動展開，已連接則收合（點標題勾選可再展開）
+        guide_group = QGroupBox("首次連接教學（Google Cloud Console 申請 OAuth 憑證）")
+        guide_group.setCheckable(True)
+        guide_layout = QVBoxLayout(guide_group)
+        guide_label = QLabel(self._GMAIL_GUIDE_HTML)
+        guide_label.setWordWrap(True)
+        guide_label.setOpenExternalLinks(True)   # 連結可直接點開瀏覽器
+        guide_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        guide_layout.addWidget(guide_label)
+        btn_open_console = QPushButton("開啟 Google Cloud Console")
+        btn_open_console.clicked.connect(self._on_open_google_console)
+        guide_layout.addWidget(btn_open_console)
+        connected = bool(load_gmail_credentials())
+        guide_group.setChecked(not connected)
+        guide_label.setVisible(not connected)
+        btn_open_console.setVisible(not connected)
+        guide_group.toggled.connect(guide_label.setVisible)
+        guide_group.toggled.connect(btn_open_console.setVisible)
+        layout.addWidget(guide_group)
 
         conn_group = QGroupBox("Gmail 帳號連接（OAuth，唯讀權限）")
         conn_form = QFormLayout(conn_group)
@@ -666,6 +703,12 @@ class SettingsPage(QWidget):
         layout.addWidget(filter_group)
         layout.addStretch()
         return w
+
+    @staticmethod
+    def _on_open_google_console():
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl("https://console.cloud.google.com"))
 
     def _gmail_status_text(self) -> str:
         return "✓ 已連接" if load_gmail_credentials() else "未連接"

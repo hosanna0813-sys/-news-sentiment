@@ -27,6 +27,19 @@
 
 <div class="card">
   <h2>Gmail 新聞來源</h2>
+
+  <details {{ '' if gmail_connected else 'open' }}>
+    <summary><strong>首次連接教學（Google Cloud Console 申請 OAuth 憑證，只需設定一次）</strong></summary>
+    <ol>
+      <li>開啟 <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a>，登入 Google 帳號，上方選單<strong>建立新專案</strong></li>
+      <li>左側「API 和服務 → 程式庫」搜尋 <strong>Gmail API</strong> → 啟用</li>
+      <li>「OAuth 同意畫面」：使用者類型選「<strong>外部</strong>」；<strong>重要：</strong>在「測試使用者」加入收新聞監測信的 Gmail 地址（沒加會被「應用程式未經驗證」擋下）</li>
+      <li>「憑證 → 建立憑證 → OAuth 用戶端 ID」：應用程式類型選「<strong>網頁應用程式</strong>」，並把下方藍框顯示的 <strong>Authorized redirect URI</strong> 逐字貼進「已授權的重新導向 URI」</li>
+      <li>把產生的 Client ID / Client Secret 設為部署平台的環境變數 <code>GMAIL_OAUTH_CLIENT_ID</code> / <code>GMAIL_OAUTH_CLIENT_SECRET</code>（Render：Dashboard → Environment）並重新部署</li>
+      <li>回到本頁按「連接 Gmail」→ 登入收新聞信的帳號 → 出現「未經驗證」警告點「繼續」→ 允許唯讀權限</li>
+    </ol>
+    <p class="muted">本系統只申請「唯讀」權限，只能讀信、不能寄信或刪信。</p>
+  </details>
   <p>
     OAuth Client：
     {% if oauth_client_configured %}
