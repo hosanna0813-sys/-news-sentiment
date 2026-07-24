@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Continuing development? Read `DEVELOPMENT_GUIDE.md` FIRST.** It is the living handoff
+> document: current status, collaboration workflow with the (non-engineer) owner, conventions
+> and pitfalls learned in past sessions, and the prioritized next steps. This file (CLAUDE.md)
+> describes the architecture; DEVELOPMENT_GUIDE.md describes where the work currently stands.
+
 > **Note on repo state**: `app/` and `tests/` were reconstructed from the README on 2026-07-04
 > (the original source tree was lost before being committed). The six fixes recorded in
 > `HANDOFF.md` (Playwright EPIPE cleanup_fn, prompt editor upgrade, Word export layout,
